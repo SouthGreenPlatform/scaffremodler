@@ -1,14 +1,16 @@
-import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, random, multiprocessing, datetime
+import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, random, multiprocessing, datetime, math, re
+
 
 def stop_err( msg ):
-    sys.stderr.write( "%s\n" % msg )
-    sys.exit()
+	sys.stderr.write( "%s\n" % msg )
+	sys.exit()
 
 def run_job (cmd_line, ERROR):
-	print cmd_line
+	print str(datetime.datetime.now())+" : "+cmd_line
+	sys.stdout.flush()
 	try:
 		tmp = tempfile.NamedTemporaryFile().name
-		# print tmp
+		print tmp
 		error = open(tmp, 'w')
 		proc = subprocess.Popen( args=cmd_line, shell=True, stderr=error)
 		returncode = proc.wait()
@@ -29,9 +31,54 @@ def run_job (cmd_line, ERROR):
 			raise Exception, stderr
 	except Exception, e:
 		stop_err( ERROR + str( e ) )
+	finally:
+		return returncode
+
+
+def main(job):
+
+	try:
+		#Modify the different paths for working in sub folders.
+		regexSamFile = re.compile("(--sam\s.+)")
+		regexOutFile = re.compile("(--out\s.+)")
+		samFile = os.path.splitext(regexSamFile.search(job).group(1).split()[1])[0]
+		outFile = regexOutFile.search(job).group(1).split()[1]
+		job = job.replace('--sam ','--sam ../')
+		job = job.replace('--config ','--config ../')
+
+		# Create a dir based on the discordant type
+		WORKING_DIR = tempfile.mkdtemp(prefix="temp_"+samFile+'_', dir=os.getcwd()).split('/')[-1]+'/'
+		os.chdir(WORKING_DIR)
+		returnCode = run_job(job, "error on the job : "+job+"\n")
+	except Exception as e:
+		print e
+	finally:
+		if os.path.isfile(outFile):
+			os.rename(outFile, os.pardir+"/"+outFile)
+		os.chdir(os.pardir)
+		shutil.rmtree(WORKING_DIR)
+		return returnCode
+
+
+# def worker(listJobs, out_q):
+	# """
+
+	# """
+	# outdict = {}
+	# # print "###"
+	# # print listJobs
+	# # print "###"
+	# for job in listJobs:
+		# try:
+			# # print "job : "+job
+			# outdict[job] = main(job)
+		# except Exception as e:
+			# outdict[job] = 0
+			# sys.stderr.write(format(e))
+			# pass
+	# out_q.put(outdict)
 
 def __main__():
-	t_total = datetime.datetime.now()
 	#Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Guillaume MARTIN : guillaume.martin@cirad.fr\n\n"
 	"Is a wrapper for ApMap tools")
@@ -69,15 +116,18 @@ def __main__():
 	parser.add_option( '', '--step', dest='step', default='12345678', help='Steps to perform, [default: %default]')
 	parser.add_option( '', '--exclude_chrom', dest='exclude_chrom', default='no_exclude', help='Exclude chromosomes from analysis. "no_exclude" or chromosomes names separated by "=", [default: %default]')
 	(options, args) = parser.parse_args()
-	
-	
-	proc = int(options.thread)
-	
+
+
+
+	nbProcs = int(options.thread)
+	if nbProcs > multiprocessing.cpu_count():
+		sys.exit("Processors number to high.\nYou have only "+str(multiprocessing.cpu_count())+" processor(s) available on this computer.")
+
 	pathname = os.path.dirname(sys.argv[0])
-	
+
 	loca_programs = ConfigParser.RawConfigParser()
 	loca_programs.read(pathname+'/loca_programs.conf')
-	
+
 	if '1' in options.step:
 		t0 = datetime.datetime.now()
 		print("Step 1 'create_conf' in progress")
@@ -85,7 +135,7 @@ def __main__():
 		conf_commande = '%s %s/1_create_conf.py --tool %s --ref %s --q1 %s --q2 %s --orient %s --mini %s --maxi %s --qual %s --index %s --rmindex %s --mini_dis %s --mult_max_cov %s --mult_min_cov %s --min_zone %s --min_gap %s --thread %s --msd %s --max_dist_merge %s --YiS %s --MiS %s --YiC %s --MiC %s --min_score %s --ploid %s --restimate %s --output %s.conf --chr %s.chrom --rm_intermediate %s --exclude_chrom %s' % (loca_programs.get('Programs','python'), pathname, options.tool, options.ref, options.q1, options.q2, options.orient, options.mini, options.maxi, options.qual, options.index, options.rmindex, options.mini_dis, options.mult_max_cov, options.mult_min_cov, options.min_zone, options.min_gap, options.thread, options.msd, options.max_dist_merge, options.YiS, options.MiS, options.YiC, options.MiC, options.min_score, options.ploid, options.restimate, options.prefix, options.prefix, options.rm_intermediate, options.exclude_chrom)
 		# print conf_commande
 		run_job( conf_commande, 'bug')
-		print("Step 1 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 1 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '2' in options.step:
 		t0 = datetime.datetime.now()
@@ -94,7 +144,7 @@ def __main__():
 		mapping = '%s %s/2_map.py --config %s.conf --out %s.sam' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix)
 		# print mapping
 		run_job( mapping, 'bug')
-		print("Step 2 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 2 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '3' in options.step:
 		t0 = datetime.datetime.now()
@@ -103,7 +153,7 @@ def __main__():
 		filter1 = '%s %s/3_filter_single_pair.py --config %s.conf --out %s_fltr1.sam' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix)
 		# print filter1
 		run_job( filter1, 'bug')
-		print("Step 3 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 3 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '4' in options.step:
 		t0 = datetime.datetime.now()
@@ -112,7 +162,7 @@ def __main__():
 		filter2 = '%s %s/4_filter_sam.py --config %s.conf --out %s_fltr2.bam' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix)
 		# print filter2
 		run_job( filter2, 'bug')
-		print("Step 4 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 4 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '5' in options.step:
 		t0 = datetime.datetime.now()
@@ -121,7 +171,7 @@ def __main__():
 		stat = '%s %s/5_calc_stat.py --config %s.conf --out %s.cov --stat %s_stat.txt --outconf %s_stat.conf' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix)
 		# print stat
 		run_job( stat, 'bug')
-		print("Step 5 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 5 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '6' in options.step:
 		t0 = datetime.datetime.now()
@@ -130,7 +180,7 @@ def __main__():
 		trie = '%s %s/6_parse_discord.py --config %s.conf --out_ins %s_ins.bam --out_del %s_del.bam --out_fr %s_fr.bam --out_rf %s_rf.bam --out_ff %s_ff.bam --out_rr %s_rr.bam --out_chr_fr %s_chr_fr.bam --out_chr_rf %s_chr_rf.bam --out_chr_ff %s_chr_ff.bam --out_chr_rr %s_chr_rr.bam --out_discarded %s_discarded.bam --liste_type %s.list --discord_prop %s.prop' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix)
 		# print trie
 		run_job( trie, 'bug')
-		print("Step 6 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 6 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '7' in options.step:
 		t0 = datetime.datetime.now()
@@ -138,93 +188,96 @@ def __main__():
 		sys.stdout.flush()
 		liste_id = []
 		if options.orient == 'rf':
-			select1 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_fr.bam --out %s_fr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select1 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_fr.bam --out %s_chr_fr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select1)
-			select2 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ff.bam --out %s_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select2 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_ff.bam --out %s_chr_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select2)
-			select3 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_rr.bam --out %s_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select3 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rr.bam --out %s_chr_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select3)
-			# select = 'python26 %s/7_select_on_cov.py --config %s.conf --sam %s_rf.bam --out %s_rf.score' % (pathname, options.prefix, options.prefix, options.prefix)
-			select4 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ins.bam --out %s_ins.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select4 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rf.bam --out %s_chr_rf.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select4)
 			select5 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_del.bam --out %s_del.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select5)
-			select6 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_fr.bam --out %s_chr_fr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select6 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ins.bam --out %s_ins.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select6)
-			select7 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_ff.bam --out %s_chr_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select7 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_fr.bam --out %s_fr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select7)
-			select8 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rr.bam --out %s_chr_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select8 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ff.bam --out %s_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select8)
-			select9 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rf.bam --out %s_chr_rf.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select9 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_rr.bam --out %s_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select9)
-			liste_process = []
-			for n in liste_id:
-				t = multiprocessing.Process(target=run_job, args=(n, 'Bug when running multiprocess',))
-				liste_process.append(t)
-				if len(liste_process) == proc:
-					# Starts threads
-					for process in liste_process:
-						process.start()
-					# This blocks the calling thread until the thread whose join() method is called is terminated.
-					for process in liste_process:
-						process.join()
-					#the processes are done
-					liste_process = []
-			if liste_process:
-				# Starts threads
-				for process in liste_process:
-					process.start()
-				# This blocks the calling thread until the thread whose join() method is called is terminated.
-				for process in liste_process:
-					process.join()
-				#the processes are done
-				liste_process = []
+
+
+			#Change the chromosome file to working in different sub folders
+			config = ConfigParser.RawConfigParser()
+			config.read(options.prefix+".conf")
+			chrFile = config.get('General','chr')
+			config.set('General','chr', "../"+chrFile)
+			with open(options.prefix+".conf", 'wb') as configfile:
+				config.write(configfile)
+
+			pool = multiprocessing.Pool(processes=nbProcs)
+			resultsJobs = pool.map(main, liste_id)
+
+			for i, job in enumerate(resultsJobs):
+				if job != 0:
+					print("Sorry the job : \n"+liste_id[i]+"\n" \
+						  "could not be completed due to an error.\n" \
+						  "Please read the error log file for more details.")
+
+			#rewrite the chromosome file to his initial value
+			chrFile = config.get('General','chr')[3:]
+			config.set('General','chr', chrFile)
+			with open(options.prefix+".conf", 'wb') as configfile:
+				config.write(configfile)
+
 		elif options.orient == 'fr':
-			# select = 'python26 %s/7_select_on_cov.py --config %s.conf --sam %s_fr.bam --out %s_fr.score' % (pathname, options.prefix, options.prefix, options.prefix)
-			select1 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ff.bam --out %s_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select1 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_fr.bam --out %s_chr_fr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select1)
-			select2 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_rr.bam --out %s_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select2 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_ff.bam --out %s_chr_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select2)
-			select3 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_rf.bam --out %s_rf.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select3 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rr.bam --out %s_chr_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select3)
-			select4 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ins.bam --out %s_ins.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select4 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rf.bam --out %s_chr_rf.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select4)
 			select5 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_del.bam --out %s_del.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select5)
-			select6 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_fr.bam --out %s_chr_fr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select6 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ins.bam --out %s_ins.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select6)
-			select7 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_ff.bam --out %s_chr_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select7 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_rf.bam --out %s_rf.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select7)
-			select8 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rr.bam --out %s_chr_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select8 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_ff.bam --out %s_ff.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select8)
-			select9 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_chr_rf.bam --out %s_chr_rf.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
+			select9 = '%s %s/7_select_on_cov.py --config %s.conf --sam %s_rr.bam --out %s_rr.score' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix)
 			liste_id.append(select9)
-			liste_process = []
-			for n in liste_id:
-				t = multiprocessing.Process(target=run_job, args=(n, 'Bug when drawing circos',))
-				liste_process.append(t)
-				if len(liste_process) == proc:
-					# Starts threads
-					for process in liste_process:
-						process.start()
-					# This blocks the calling thread until the thread whose join() method is called is terminated.
-					for process in liste_process:
-						process.join()
-					#the processes are done
-					liste_process = []
-			if liste_process:
-				# Starts threads
-				for process in liste_process:
-					process.start()
-				# This blocks the calling thread until the thread whose join() method is called is terminated.
-				for process in liste_process:
-					process.join()
-				#the processes are done
-				liste_process = []
+
+
+			#Change the chromosome file to working in different sub folders
+			config = ConfigParser.RawConfigParser()
+			config.read(options.prefix+".conf")
+			chrFile = config.get('General','chr')
+			config.set('General','chr', "../"+chrFile)
+			with open(options.prefix+".conf", 'wb') as configfile:
+				config.write(configfile)
+
+			pool = multiprocessing.Pool(processes=nbProcs)
+			resultsJobs = pool.map(main, liste_id)
+
+			for i, job in enumerate(resultsJobs):
+				if job != 0:
+					print("Sorry the job : \n"+liste_id[i]+"\n" \
+						  "could not be completed due to an error.\n" \
+						  "Please read the error log file for more details.")
+
+			#rewrite the chromosome file to his initial value
+			chrFile = config.get('General','chr')[3:]
+			config.set('General','chr', chrFile)
+			with open(options.prefix+".conf", 'wb') as configfile:
+				config.write(configfile)
 		else:
 			mot = 'Unrecognized argument in --orient option: '+options.orient
 			sys.exit(mot)
-		print("Step 7 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 7 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 	if '8' in options.step:
 		t0 = datetime.datetime.now()
@@ -239,7 +292,6 @@ def __main__():
 		else:
 			mot = 'Unrecognized argument in --orient option: '+options.orient
 			sys.exit(mot)
-		print("Step 8 is finished. Duration time : "+str(datetime.datetime.now() - t0))
+		print("Step 8 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
-	print ("Total time : "+str(datetime.datetime.now()-t_total))
 if __name__ == "__main__": __main__()

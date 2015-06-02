@@ -1,8 +1,9 @@
-import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, random, datetime, glob
+import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, random, datetime, glob, sys
+import multiprocessing
 
 def stop_err( msg ):
-    sys.stderr.write( "%s\n" % msg )
-    sys.exit()
+	sys.stderr.write( "%s\n" % msg )
+	sys.exit()
 
 def run_job (cmd_line, ERROR):
 	print cmd_line
@@ -29,6 +30,20 @@ def run_job (cmd_line, ERROR):
 			raise Exception, stderr
 	except Exception, e:
 		stop_err( ERROR + str( e ) )
+
+
+def worker(job):
+	try:
+		print "---"
+		print job[0]
+		print job[1]
+		print "---"
+		sys.stdout.flush()
+		run_job(job[0], job[1])
+	except Exception, e:
+		print "error : "+e.__doc__+" ('"+e.message+")' in '"+job[0]+"'"
+
+
 
 def Mapping(LOCA_PROGRAMS, TOOL, REF, Q1, Q2, ORIENT, MIN, MAX, QUAL, INDEX, RMINDEX, THREAD, OUT, PATHNAME):
 		interm1 = OUT+'_mate1.sam'
@@ -74,15 +89,37 @@ def Mapping(LOCA_PROGRAMS, TOOL, REF, Q1, Q2, ORIENT, MIN, MAX, QUAL, INDEX, RMI
 			sorting1 = '%s -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=queryname QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), interm1, interm_sort1)
 			sorting2 = '%s -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=queryname QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), interm2, interm_sort2)
 			merging = '%s %s/merge_sam.py --file1 %s --file2 %s --out %s --min %s --max %s --orient %s' % (LOCA_PROGRAMS.get('Programs','python'), PATHNAME, interm_sort1, interm_sort2, OUT, MIN, MAX, ORIENT)
+
 			run_job(mapping1, 'Mapping error:\n')
-			run_job(sorting1, 'Sorting error:\n')
-			os.remove(interm1)
 			run_job(mapping2, 'Mapping error:\n')
+
+			# sorting1 = "%s sort -n -o %s -m 3700M -O sam %s" % (LOCA_PROGRAMS.get('Programs','samtools'), "mate1_sorted.sam", "Cavendish_on_V2.sam_mate1.sam")
+			# sorting2 = "%s sort -n -o %s -m 3700M -O sam %s" % (LOCA_PROGRAMS.get('Programs','samtools'), "mate2_sorted.sam", "Cavendish_on_V2.sam_mate2.sam")
+
+			# listJobs = []
+			# listJobs.append([sorting1, 'Sorting error:\n'])
+			# listJobs.append([sorting2, 'Sorting error:\n'])
+			run_job(sorting1, 'Sorting error:\n')
 			run_job(sorting2, 'Sorting error:\n')
-			os.remove(interm2)
+			# print THREAD
+			# pool = multiprocessing.Pool(processes=int(THREAD))
+			# results = pool.map(worker, listJobs)
+			#
+			# print results
+
+			# os.remove(interm1)
+			# os.remove(interm2)
+
+
+			# run_job(mapping1, 'Mapping error:\n')
+			# run_job(sorting1, 'Sorting error:\n')
+			# os.remove(interm1)
+			# run_job(mapping2, 'Mapping error:\n')
+			# run_job(sorting2, 'Sorting error:\n')
+			# os.remove(interm2)
 			run_job(merging, 'Merging error:\n')
-			os.remove(interm_sort1)
-			os.remove(interm_sort2)
+			# os.remove(interm_sort1)
+			# os.remove(interm_sort2)
 		elif TOOL == 'bowtie2':
 			if INDEX == 'y':
 				build_index = '%s -q -f %s %s' % (LOCA_PROGRAMS.get('Programs','bowtie2-build'), REF, REF)
@@ -146,14 +183,14 @@ def __main__():
 	parser.add_option( '', '--out', dest='out', default='mate.sam', help='The ouput of mapped reads, [default: %default]')
 	parser.add_option( '', '--config', dest='config', default=None)
 	(options, args) = parser.parse_args()
-	
-	
-	
+
+
+
 	pathname = os.path.dirname(sys.argv[0])
-	
+
 	loca_programs = ConfigParser.RawConfigParser()
 	loca_programs.read(pathname+'/loca_programs.conf')
-	
+
 	if options.config:
 		config = ConfigParser.RawConfigParser()
 		config.read(options.config)
@@ -175,9 +212,9 @@ def __main__():
 		if options.ref == 'not_filled':
 			sys.exit('--ref argument is missing')
 		Mapping(loca_programs, options.tool, options.ref, options.q1, options.q2, options.orient, options.mini, options.maxi, options.qual, options.index, options.rmindex, options.thread, options.out, pathname)
-		
-		
-		
-		
-		
+
+
+
+
+
 if __name__ == "__main__": __main__()

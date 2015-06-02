@@ -1,4 +1,4 @@
-import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, math
+import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, math, multiprocessing, datetime
 from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna
 from Bio import SeqIO
@@ -34,6 +34,27 @@ def run_job (cmd_line, ERROR):
 	except Exception, e:
 		stop_err( ERROR + str( e ) )
 
+def convertFilter(filter, contrary = False):
+	if not contrary:
+		if filter == 'P' or filter == "PASSED":
+			filter = 3
+		elif filter == "NP" or filter == "NOT_PASSED":
+			filter = 2
+		elif filter == 'N' or filter == "NEW_PASSED":
+			filter = 1
+		else:
+			filter = 0
+	else:
+		if filter == 3:
+			filter = 'P'
+		elif filter == 2:
+			filter = 'NP'
+		elif filter == 1:
+			filter = 'N'
+		else:
+			filter = 'N'
+	return filter
+
 def create_kar(REF, CHR, OUT_KAR, OUT_N):
 	record_dict = SeqIO.index(REF, "fasta")
 	file = open(CHR)
@@ -43,7 +64,7 @@ def create_kar(REF, CHR, OUT_KAR, OUT_N):
 		if data:
 			out1.write("chr - "+data[0]+ " "+data[0]+" 0 "+str(len(str(record_dict[data[0]].seq))+1)+" blue\n")
 	file.close()
-	
+
 	out2 = open(OUT_N,'w')
 	file = open(CHR)
 	for line in file:
@@ -72,10 +93,10 @@ def create_kar(REF, CHR, OUT_KAR, OUT_N):
 			out2.write(data[0]+'\t'+str(pos)+'\t'+str(pos)+'\t'+data[0]+'-'+str(pos)+'-'+'f\n')
 	out1.close()
 	out2.close()
-		
+	return 0
 ##########################################################################################################################################################
 #fonction that create link file based on discordant zone
-def create_discord_link(FILE, OUT):
+def create_discord_link_org(FILE, OUT):
 	outfile = open(OUT,'w')
 	i = 1
 	file = open(FILE)
@@ -93,10 +114,74 @@ def create_discord_link(FILE, OUT):
 						outfile.write('\nlink'+str(i)+' '+data[5]+' '+data[6]+' '+data[7])
 						i = i + 1
 	outfile.close()
+	return 0
+
+def create_discord_link(scoreFile, outFile, intervalNbAcc, filterZone, filterDraw):
+	"""
+		Create a link file based on the discordant zones.
+
+		:param scoreFile: the score file provide by the script "7_select_on_cov.py"
+		:type scoreFile: str
+		:param outFile: the .link outfile
+		:type outFile: str
+		:param nbAccessMin: the minimum number of accession where a couple of zones is present. 0 = the zone is specific to the accession.
+		:type nbAccessMin: int
+		:param filterZone: The filter used to compare couple of zones. (PASSED, NOT_PASSED or NEW_PASSED)
+		:type filterZone: str
+		:return: void
+	"""
+
+	output = open(outFile, 'w')
+	input = open(scoreFile, 'r')
+
+	filterZone = convertFilter(filterZone)
+	filterDraw = convertFilter(filterDraw)
+
+	if intervalNbAcc != "null":
+		# treatment of the interval
+		intervalNbAcc = intervalNbAcc.split('-')
+		if not intervalNbAcc:
+			raise valueError("Invalid interval of accession number : "\
+								 +str(intervalNbAcc)+\
+								 ". Please format the interval like : 0-3")
+		else:
+			intervalNbAcc[0] = int(intervalNbAcc[0])
+			if len(intervalNbAcc) == 1:
+				intervalNbAcc.append(intervalNbAcc[0])
+			elif len(intervalNbAcc) == 2:
+				intervalNbAcc[1] = int(intervalNbAcc[1])
+			else:
+				raise valueError("Invalid interval of accession number : "\
+								 +str(intervalNbAcc)+\
+								 ". Please format the interval like : 0-3")
+	i = 0
+	for line in input:
+		cols = line.split()
+		if cols and cols[0][0] != '#' and convertFilter(cols[13]) >= filterDraw:  # not header
+			if intervalNbAcc != "null":
+				nbAccessionVal = 0
+				if cols[10] != '-':
+					for accession in cols[10].split('|'):
+						elmts = accession.split(':')
+						if filterZone <= int(elmts[1]):  #Identical zones found in another accession
+							nbAccessionVal += 1
+				if nbAccessionVal >= intervalNbAcc[0] and nbAccessionVal <= intervalNbAcc[1]:
+					output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+								 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+					i += 1
+			else:
+				output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+							 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+				i += 1
+
+	return 0
+
+
 
 ##########################################################################################################################################################
 #fonction that create paired-read link file based on .list file of ApMap
 def create_read_link(FILE, OUT, TYPE):
+	#create_read_link(options.liste_read, options.prefix+'_read_rf.link', 'ok')
 	outfile = open(OUT,'w')
 	i = 1
 	file = open(FILE)
@@ -105,26 +190,16 @@ def create_read_link(FILE, OUT, TYPE):
 		if data:
 			if data[5] == 'discard':
 				if data[6] == TYPE:
-					if i == 1:
-						outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+'\n')
-						outfile.write('link'+str(i)+' '+data[4]+' '+data[2]+' '+data[2])
-						i = i + 1
-					else:
-						outfile.write('\nlink'+str(i)+' '+data[3]+' '+data[1]+' '+data[1])
-						outfile.write('\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2])
-						i = i + 1
+					outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+\
+								  '\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
+					i = i + 1
 			else:
 				if data[5] == TYPE:
-					if i == 1:
-						outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+'\n')
-						outfile.write('link'+str(i)+' '+data[4]+' '+data[2]+' '+data[2])
-						i = i + 1
-					else:
-						outfile.write('\nlink'+str(i)+' '+data[3]+' '+data[1]+' '+data[1])
-						outfile.write('\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2])
-						i = i + 1
+					outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+\
+								  '\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
+					i = i + 1
 	outfile.close()
-
+	return 0
 
 ##########################################################################################################################################################
 #fonction that calculate coverage over a certain windows size on the reference
@@ -149,143 +224,103 @@ def moyenne(L):
 	return moyenne
 
 
-def calcul_couv_moy(COUV, CHR, WIN, OUT):
-	#############################################
-	#Recording chromosome size
-	DIC = {}
-	file = open(CHR)
-	for line in file:
-		data = line.split()
-		if data:
-			DIC[data[0]] = int(data[1])
-	file.close()
-	#Done
-	#############################################
-	#calculating median of mean coverage
-	LISTE_total = []
-	FILE = open(COUV)
-	chr = ""
+def calcul_couv_moy(covFile, chrFile, window, output):
+	"""
+		Calculate the median and the mean coverage per window
+	"""
+	chrSize = {}
+	with open(chrFile, 'r') as f:
+		for line in f:
+			if line.strip():
+				cols = line.split()
+				chrSize[cols[0]] = int(cols[1])
 	i = 0
-	for LINE in FILE:
-		DATA = LINE.split()
-		if DATA != []:
-			i = i + 1
-			if chr == "":#on est au tout debut
-				chr = DATA[0]
-				LISTE = []
-				while i < int(DATA[1]):
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-						LISTE = []
-					i = i + 1
-				LISTE.append(int(DATA[2]))
-				if len(LISTE)%WIN == 0:
-					LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-					LISTE = []
-			elif chr != DATA[0]:#on arrive sur un nouveau chromosome
-				while i <= DIC[chr]:
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-						LISTE = []
-					i = i + 1
-				if len(LISTE)%WIN != 0:
-					LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-				LISTE = []
-				i = 1
-				chr = DATA[0]
-				while i < int(DATA[1]):
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-						LISTE = []
-					i = i + 1
-				LISTE.append(int(DATA[2]))
-				if len(LISTE)%WIN == 0:
-					LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-					LISTE = []
-			else:
-				while i < int(DATA[1]):
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-						LISTE = []
-					i = i + 1
-				LISTE.append(int(DATA[2]))
-				if len(LISTE)%WIN == 0:
-					LISTE_total.append(sum(LISTE)/float(len(LISTE)))
-					LISTE = []
-	MEDIANE = mediane(LISTE_total)
-	#Done
-	#############################################
-	#calculating mean covearge
-	LISTE_total = []
-	OUTFILE = open(OUT,'w')
-	FILE = open(COUV)
+	covPerWin = []
+	listWindows = []
 	chr = ""
-	i = 0
-	for LINE in FILE:
-		DATA = LINE.split()
-		if DATA != []:
-			i = i + 1
-			if chr == "":#on est au tout debut
-				chr = DATA[0]
-				LISTE = []
-				while i < int(DATA[1]):
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-						LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-						LISTE = []
-					i = i + 1
-				LISTE.append(int(DATA[2]))
-				if len(LISTE)%WIN == 0:
-					OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-					LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-					LISTE = []
-			elif chr != DATA[0]:#on arrive sur un nouveau chromosome
-				while i <= DIC[chr]:
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-						LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-						LISTE = []
-					i = i + 1
-				if len(LISTE)%WIN != 0:
-					OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-					LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-				LISTE = []
+	coverage = 0.0
+	index = 0
+	f = open(covFile, 'r')
+	for line in f:
+		if line.strip():
+			i += 1
+			cols = line.split()
+			if not chr:  # first line
+				chr = cols[0]
+				while i < int(cols[1]):
+					index += 1
+					if index == window:
+						covPerWin.append(coverage/float(index))
+						listWindows.append([chr, i-index, i, coverage/float(index)])
+						index = 0
+						coverage = 0.0
+					i += 1
+				coverage = float(cols[2])
+				index += 1
+				if index == window:
+					covPerWin.append(coverage/float(index))
+					listWindows.append([chr, i-index, i, coverage/float(index)])
+					coverage = 0.0
+					index = 0
+			elif chr == cols[0]:  # same chromosome
+				while i < int(cols[1]):
+					index += 1
+					if index == window:
+						covPerWin.append(coverage/float(index))
+						listWindows.append([chr, i-index, i, coverage/float(index)])
+						index = 0
+						coverage = 0.0
+					i += 1
+				coverage += float(cols[2])
+				index += 1
+				if index == window:
+					covPerWin.append(coverage/float(index))
+					listWindows.append([chr, i-index, i, coverage/float(index)])
+					coverage = 0.0
+					index = 0
+			else:  # new chromosome
+				while i <= chrSize[chr]:
+					index += 1
+					if index == window:
+						covPerWin.append(coverage/float(index))
+						listWindows.append([chr, i-index, i, coverage/float(index)])
+						coverage = 0.0
+						index = 0
+					i += 1
+				if index:
+					covPerWin.append(coverage/float(index-1))
+					listWindows.append([chr, i-index, i, coverage/float(index)])
+					coverage = 0.0
+					index = 0
 				i = 1
-				chr = DATA[0]
-				while i < int(DATA[1]):
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-						LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-						LISTE = []
-					i = i + 1
-				LISTE.append(int(DATA[2]))
-				if len(LISTE)%WIN == 0:
-					OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-					LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-					LISTE = []
-			else:
-				while i < int(DATA[1]):
-					LISTE.append(0)
-					if len(LISTE)%WIN == 0:
-						OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-						LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-						LISTE = []
-					i = i + 1
-				LISTE.append(int(DATA[2]))
-				if len(LISTE)%WIN == 0:
-					OUTFILE.write(chr+'\t'+str(i-len(LISTE))+'\t'+str(i-1)+'\t'+str((sum(LISTE)/float(len(LISTE)))-MEDIANE)+'\n')
-					LISTE_total.append((sum(LISTE)/float(len(LISTE)))-MEDIANE)
-					LISTE = []
-	OUTFILE.flush()
-	OUTFILE.close()
-	return [MEDIANE, moyenne(LISTE_total)]
+				chr = cols[0]
+				while i < int(cols[1]):
+					index += 1
+					if index == window:
+						covPerWin.append(coverage/float(index))
+						listWindows.append([chr, i-index, i, coverage/float(index)])
+						coverage = 0.0
+						index = 0
+					i += 1
+				coverage += float(cols[2])
+				index += 1
+				if index == window:
+					covPerWin.append(coverage/float(index))
+					listWindows.append([chr, i-index, i, coverage/float(index)])
+					coverage = 0.0
+					index = 0
+				chr = cols[0]
+	f.close()
+	med = mediane(covPerWin)
+
+	listCov = []
+	out = open(output, 'w')
+	for window in listWindows:
+		out.write(window[0]+'\t'+str(window[1])+'\t'+str(window[2]-1)+'\t'+str(window[3] - med)+'\n')
+		listCov.append(window[3] - med)
+	out.close()
+
+	return [med, moyenne(listCov)]
 
 def create_tile(FILE, OUT):
 	outfile = open(OUT, 'w')
@@ -303,22 +338,50 @@ def create_tile(FILE, OUT):
 						mot = 'color=black'
 	file.close()
 	outfile.close()
+	return 0
+
+
+def worker(job):
+	codeError = 0
+	try:
+		if job[0] == "create_kar":
+			rslt = create_kar(*job[1])
+		elif job[0] == "calcul_couv_moy":
+			rslt = calcul_couv_moy(*job[1])
+		elif job[0] == "create_discord_link":
+			rslt = create_discord_link(*job[1])
+		elif job[0] == "create_read_link":
+			rslt = create_read_link(*job[1])
+		elif job[0] == "create_tile":
+			rslt = create_tile(*job[1])
+		else:
+			codeError = 1
+			rslt = 0
+			print "unrecognised function name : "+job[0]
+	except Exception, e:
+		print "error : "+e.__doc__+" ('"+e.message+")' in '"+job[0]+"'"
+		rslt = 0
+		codeError = 1
+	finally:
+		return [codeError, rslt, job[0], job[1]]
+
 
 def __main__():
+	t0 = datetime.datetime.now()
 	#Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Guillaume MARTIN : guillaume.martin@cirad.fr\n\n"
 	"This program takes in input all files needed to generate circos and output severals files that will be used to generate different circos plus a config file")
-	
+
 	# Wrapper options.
 	#For input
-	
+
 	parser.add_option( '', '--ref', dest='ref', default='not_filled', help='The multi-fasta reference file')
 	parser.add_option( '', '--chr', dest='chr', default='not_filled', help='File containing col1: chromosome name and col2: chromsome size')
 	parser.add_option( '', '--orient', dest='orient', default='rf', help='The expected orientation: rf or fr, [default: %default]')
-	
+
 	parser.add_option( '', '--cov', dest='cov', default='not_filled', help='The coverage file')
 	parser.add_option( '', '--window', dest='window', default=1000, help='Window size (base pair), [default: %default]')
-	
+
 	parser.add_option( '', '--frf', dest='frf', default='not_filled', help='frf_discord.score file')
 	parser.add_option( '', '--ff', dest='ff', default='not_filled', help='ff_discord.score file')
 	parser.add_option( '', '--rr', dest='rr', default='not_filled', help='rr_discord.score file')
@@ -328,22 +391,26 @@ def __main__():
 	parser.add_option( '', '--chr_rf', dest='chr_rf', default='not_filled', help='chr_rf_discord.score file')
 	parser.add_option( '', '--chr_ff', dest='chr_ff', default='not_filled', help='chr_ff_discord.score file')
 	parser.add_option( '', '--chr_fr', dest='chr_fr', default='not_filled', help='chr_fr_discord.score file')
-	
+
 	parser.add_option( '', '--liste_read', dest='liste_read', default='not_filled', help='A file containing information on mapped reads (.list file of ApMap)')
-	
+
 	parser.add_option( '', '--dis_prop', dest='dis_prop', default='not_filled', help='The file containing proportions of discordant reads (.prop file of ApMap)')
-	
+
 	parser.add_option( '', '--agp', dest='agp', default='not_filled', help='An agp file locating scaffold along chromosomes')
-	
+
+	parser.add_option( '', '--nbaccess', dest='nbaccess', default='null', help='Draw only zone presents from n accessions, [default: %default]')
+	parser.add_option( '', '--filterzone', dest='filterzone', default='P', help='The filter to define a similar zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
+	parser.add_option( '', '--filterdraw', dest='filterdraw', default='P', help='The filter to draw zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
+
 	# For output
 	parser.add_option( '', '--prefix', dest='prefix', default='not_filled', help='Prefix for all output files. If this options is passed, all others output options are ignored, [default: %default]')
-	
+
 	# If no prefix arguments are passed
 	parser.add_option( '', '--out_kar', dest='out_kar', default='circos_karyotype.txt', help='Karyotype output file, [default: %default]')
 	parser.add_option( '', '--out_N', dest='out_N', default='circos_loc_N.txt', help='File name of text file locating N, [default: %default]')
-	
+
 	parser.add_option( '', '--out_cov', dest='out_cov', default='circos_mean.cov', help='Mean coverage output file, [default: %default]')
-	
+
 	parser.add_option( '', '--out_frf', dest='out_frf', default='circos_zone_frf.link', help='A link output file name corresponding to frf_discord.score, [default: %default]')
 	parser.add_option( '', '--out_ff', dest='out_ff', default='circos_zone_ff.link', help='A link output file name corresponding to ff_discord.score, [default: %default]')
 	parser.add_option( '', '--out_rr', dest='out_rr', default='circos_zone_rr.link', help='A link output file name corresponding to rr_discord.score, [default: %default]')
@@ -353,7 +420,7 @@ def __main__():
 	parser.add_option( '', '--out_chr_rf', dest='out_chr_rf', default='circos_zone_chr_rf.link', help='A link output file name corresponding to chr_rf_discord.score, [default: %default]')
 	parser.add_option( '', '--out_chr_ff', dest='out_chr_ff', default='circos_zone_chr_ff.link', help='A link output file name corresponding to chr_ff_discord.score, [default: %default]')
 	parser.add_option( '', '--out_chr_fr', dest='out_chr_fr', default='circos_zone_chr_fr.link', help='A link output file name corresponding to chr_fr_discord.score, [default: %default]')
-		
+
 	parser.add_option( '', '--Rout_rf', dest='Rout_rf', default='circos_read_rf.link', help='A link output file name corresponding to mapped fr reads, [default: %default]')
 	parser.add_option( '', '--Rout_fr', dest='Rout_fr', default='circos_read_fr.link', help='A link output file name corresponding to mapped rf reads, [default: %default]')
 	parser.add_option( '', '--Rout_ff', dest='Rout_ff', default='circos_read_ff.link', help='A link output file name corresponding to mapped ff reads, [default: %default]')
@@ -364,216 +431,278 @@ def __main__():
 	parser.add_option( '', '--Rout_chr_rf', dest='Rout_chr_rf', default='circos_read_chr_rf.link', help='A link output file name corresponding to mapped chr_rf reads, [default: %default]')
 	parser.add_option( '', '--Rout_chr_ff', dest='Rout_chr_ff', default='circos_read_chr_ff.link', help='A link output file name corresponding to mapped chr_ff reads, [default: %default]')
 	parser.add_option( '', '--Rout_chr_fr', dest='Rout_chr_fr', default='circos_read_chr_fr.link', help='A link output file name corresponding to mapped chr_fr reads, [default: %default]')
-	
+
 	parser.add_option( '', '--out_scaff', dest='out_scaff', default='circos_scaffold.tile', help='A tile output file name corresponding to scaffolds, [default: %default]')
-	
+
 	parser.add_option( '', '--output', dest='output', default='config_circos.conf', help='The output of the conf file, [default: %default]')
-	
-	
-	
+
+	parser.add_option( '', '--thread', dest='thread', default='1', help='The number of threads to use, [default: %default]')
+
 	(options, args) = parser.parse_args()
-	
+
+	nbProcs = int(options.thread)
+	if nbProcs > multiprocessing.cpu_count():
+		sys.exit("Processors number too high.\nYou have only "+str(multiprocessing.cpu_count())+" processor(s) available on this computer.")
+
+	listJobs = []  # A list of all jobs
+
 	if options.ref == 'not_filled':
 		sys.exit('--ref argument is missing')
 	if options.chr == 'not_filled':
 		sys.exit('--chr argument is missing')
-		
+
 	if options.prefix != 'not_filled':
-		create_kar(options.ref, options.chr, options.prefix+'_karyotype.txt', options.prefix+'_loc_N.txt')
+		output1 = options.prefix+'_karyotype.txt'
+		output2 = options.prefix+'_loc_N.txt'
 	else:
-		create_kar(options.ref, options.chr, options.out_kar, options.out_N)
-	
+		output1 = options.out_kar
+		output2 = options.out_N
+	listJobs.append(["create_kar", [options.ref, options.chr, output1, output2]])
+
 	if options.cov != 'not_filled':
-		if options.cov == 'not_filled':
-			sys.exit('--cov argument is missing')
 		if options.window == 'not_filled':
 			sys.exit('--window argument is missing')
 		if options.out_cov == 'not_filled':
 			sys.exit('--out_cov argument is missing')
 		if options.prefix != 'not_filled':
-			Value = calcul_couv_moy(options.cov, options.chr, float(options.window), options.prefix+'_mean.cov')
+			output = options.prefix+'_mean.cov'
 		else:
-			Value = calcul_couv_moy(options.cov, options.chr, float(options.window), options.out_cov)
-	
-	#For discordant link
+			output = options.out_cov
+		listJobs.append(["calcul_couv_moy", [options.cov, options.chr, float(options.window), output]])
+
 	if options.frf != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.frf, options.prefix+'_zone_frf.link')
+			output = options.prefix+'_zone_frf.link'
 		else:
-			create_discord_link(options.frf, options.out_frf)
-			
+			output = options.out_frf
+		listJobs.append(["create_discord_link", [options.frf, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.ff != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.ff, options.prefix+'_zone_ff.link')
+			output = options.prefix+'_zone_ff.link'
 		else:
-			create_discord_link(options.ff, options.out_ff)
+			output = options.out_ff
+		listJobs.append(["create_discord_link", [options.ff, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.rr != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.rr, options.prefix+'_zone_rr.link')
+			output = options.prefix+'_zone_rr.link'
 		else:
-			create_discord_link(options.rr, options.out_rr)
+			output = options.out_rr
+		listJobs.append(["create_discord_link", [options.rr, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.ins != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.ins, options.prefix+'_zone_ins.link')
+			output = options.prefix+'_zone_ins.link'
 		else:
-			create_discord_link(options.ins, options.out_ins)
+			output = options.out_ins
+		listJobs.append(["create_discord_link", [options.ins, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.delet != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.delet, options.prefix+'_zone_delet.link')
+			output = options.prefix+'_zone_delet.link'
 		else:
-			create_discord_link(options.delet, options.out_delet)
+			output = options.out_delet
+		listJobs.append(["create_discord_link", [options.delet, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.chr_rr != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.chr_rr, options.prefix+'_zone_chr_rr.link')
+			output = options.prefix+'_zone_chr_rr.link'
 		else:
-			create_discord_link(options.chr_rr, options.out_chr_rr)
+			output = options.out_chr_rr
+		listJobs.append(["create_discord_link", [options.chr_rr, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.chr_rf != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.chr_rf, options.prefix+'_zone_chr_rf.link')
+			output = options.prefix+'_zone_chr_rf.link'
 		else:
-			create_discord_link(options.chr_rf, options.out_chr_rf)
+			output = options.out_chr_rf
+		listJobs.append(["create_discord_link", [options.chr_rf, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.chr_ff != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.chr_ff, options.prefix+'_zone_chr_ff.link')
+			output = options.prefix+'_zone_chr_ff.link'
 		else:
-			create_discord_link(options.chr_ff, options.out_chr_ff)
+			output = options.out_chr_ff
+		listJobs.append(["create_discord_link", [options.chr_ff, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
 	if options.chr_fr != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_discord_link(options.chr_fr, options.prefix+'_zone_chr_fr.link')
+			output = options.prefix+'_zone_chr_fr.link'
 		else:
-			create_discord_link(options.chr_fr, options.out_chr_fr)
-	
+			output = options.out_chr_fr
+		listJobs.append(["create_discord_link", [options.chr_fr, output, options.nbaccess, options.filterzone, options.filterdraw]])
+
+
 	#For read link
 	if options.liste_read != 'not_filled':
 		if options.orient == 'rf':
 			if options.prefix != 'not_filled':
-				create_read_link(options.liste_read, options.prefix+'_read_rf.link', 'ok')
-				create_read_link(options.liste_read, options.prefix+'_read_fr.link', 'fr')
+				output1 = options.prefix+'_read_rf.link'
+				output2 = options.prefix+'_read_fr.link'
+				flag1 = 'ok'
+				flag2 = 'fr'
 			else:
-				create_read_link(options.liste_read, options.Rout_rf, 'ok')
-				create_read_link(options.liste_read, options.Rout_fr, 'fr')
+				output1 = options.Rout_rf
+				output2 = options.Rout_fr
+				flag1 = 'ok'
+				flag2 = 'fr'
 		elif options.orient == 'fr':
 			if options.prefix != 'not_filled':
-				create_read_link(options.liste_read, options.prefix+'_read_rf.link', 'rf')
-				create_read_link(options.liste_read, options.prefix+'_read_fr.link', 'ok')
+				output1 = options.prefix+'_read_rf.link'
+				output2 = options.prefix+'_read_fr.link'
+				flag1 = 'rf'
+				flag2 = 'ok'
 			else:
-				create_read_link(options.liste_read, options.Rout_rf, 'rf')
-				create_read_link(options.liste_read, options.Rout_fr, 'ok')
+				output1 = options.Rout_rf
+				output2 = options.Rout_fr
+				flag1 = 'rf'
+				flag2 = 'ok'
 		else:
 			mot = 'Unrecognized argument in --orient %s' % options.orient
 			sys.exit(mot)
+
+		listJobs.append(["create_read_link", [options.liste_read, output1, flag1]])
+		listJobs.append(["create_read_link", [options.liste_read, output2, flag2]])
+
 		if options.prefix != 'not_filled':
-			create_read_link(options.liste_read, options.prefix+'_read_ff.link', 'ff')
-			create_read_link(options.liste_read, options.prefix+'_read_rr.link', 'rr')
-			create_read_link(options.liste_read, options.prefix+'_read_ins.link', 'ins')
-			create_read_link(options.liste_read, options.prefix+'_read_delet.link', 'del')
-			create_read_link(options.liste_read, options.prefix+'_read_chr_rr.link', 'chr_rr')
-			create_read_link(options.liste_read, options.prefix+'_read_chr_rf.link', 'chr_rf')
-			create_read_link(options.liste_read, options.prefix+'_read_chr_ff.link', 'chr_ff')
-			create_read_link(options.liste_read, options.prefix+'_read_chr_fr.link', 'chr_fr')
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_ff.link', 'ff']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_rr.link', 'rr']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_ins.link', 'ins']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_delet.link', 'del']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_chr_rr.link', 'chr_rr']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_chr_rf.link', 'chr_rf']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_chr_ff.link', 'chr_ff']])
+			listJobs.append(["create_read_link", [options.liste_read, options.prefix+'_read_chr_fr.link', 'chr_fr']])
 		else:
-			create_read_link(options.liste_read, options.Rout_ff, 'ff')
-			create_read_link(options.liste_read, options.Rout_rr, 'rr')
-			create_read_link(options.liste_read, options.Rout_ins, 'ins')
-			create_read_link(options.liste_read, options.Rout_delet, 'del')
-			create_read_link(options.liste_read, options.Rout_chr_rr, 'chr_rr')
-			create_read_link(options.liste_read, options.Rout_chr_rf, 'chr_rf')
-			create_read_link(options.liste_read, options.Rout_chr_ff, 'chr_ff')
-			create_read_link(options.liste_read, options.Rout_chr_fr, 'chr_fr')
-		
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_ff, 'ff']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_rr, 'rr']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_ins, 'ins']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_delet, 'del']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_chr_rr, 'chr_rr']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_chr_rf, 'chr_rf']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_chr_ff, 'chr_ff']])
+			listJobs.append(["create_read_link", [options.liste_read, options.Rout_chr_fr, 'chr_fr']])
+
 	if options.agp != 'not_filled':
 		if options.prefix != 'not_filled':
-			create_tile(options.agp, options.prefix+'_scaffold.tile')
+			output = options.prefix+'_scaffold.tile'
 		else:
-			create_tile(options.agp, options.out_scaff)
+			output = options.out_scaff
+		listJobs.append(["create_tile", [options.agp, output]])
+
+	pool = multiprocessing.Pool(processes=nbProcs)
+	results = pool.map(worker, listJobs)
+
+	print "Nb accession : "+options.nbaccess
+	print "filterZone : "+options.filterzone
+	print "filterDraw : "+options.filterdraw
+	print "frf : "+options.frf
+	print "ff : "+options.ff
+	print "rr : "+options.rr
+	print "ins : "+options.ins
+	print "delet : "+options.delet
+	print "chr_ff : "+options.chr_ff
+	print "chr_fr : "+options.chr_fr
+	print "chr_rf : "+options.chr_rf
+	print "chr_rr : "+options.chr_rr
+	print "total time : "+str(datetime.datetime.now() - t0)
+
+	for job in results:
+		if job[0]:
+			errorValue = "Sorry the job \""+str(job[2])+" ( "+job[3][0]+", "+job[3][1]+", "+str(job[3][2])+", "+job[3][3]+" )\" hasn't been completed."
+			sys.exit(errorValue)
+		elif job[2] == "calcul_couv_moy":
+			median_cov = job[1][0]
+			mean_cov = job[1][1]
 
 	config = ConfigParser.RawConfigParser()
 	if options.prefix != 'not_filled':
 		config.add_section('General')
-		config.set('General','chr', options.chr)
-		config.set('General','out_kar', options.prefix+'_karyotype.txt')
-		config.set('General','out_N', options.prefix+'_loc_N.txt')
+		config.set('General','chr', os.path.abspath(options.chr))
+		config.set('General','out_kar', os.path.abspath(options.prefix+'_karyotype.txt'))
+		config.set('General','out_N', os.path.abspath(options.prefix+'_loc_N.txt'))
 		config.set('General','orient', options.orient)
 		if options.cov != 'not_filled':
 			config.add_section('Coverage')
-			config.set('Coverage','cov', options.prefix+'_mean.cov')
+			config.set('Coverage','cov', os.path.abspath(options.prefix+'_mean.cov'))
 			config.set('General','cov', 'yes')
-			config.set('Coverage','median_cov', str(Value[0]))
-			config.set('Coverage','mean_cov', str(Value[1]))
+			config.set('Coverage','median_cov', str(median_cov))
+			config.set('Coverage','mean_cov', str(mean_cov))
 		else:
 			config.set('General','cov', 'no')
 		config.add_section('Discord_link')
 		config.add_section('Discord_zone')
 		if options.frf != 'not_filled':
-			config.set('Discord_link','frf', options.prefix+'_zone_frf.link')
+			config.set('Discord_link','frf', os.path.abspath(options.prefix+'_zone_frf.link'))
 			config.set('General','frf', 'yes')
 		else:
 			config.set('General','frf', 'no')
-			
+
 		if options.ff != 'not_filled':
-			config.set('Discord_link','ff', options.prefix+'_zone_ff.link')
+			config.set('Discord_link','ff', os.path.abspath(options.prefix+'_zone_ff.link'))
 			config.set('General','ff', 'yes')
 		else:
 			config.set('General','ff', 'no')
-			
+
 		if options.rr != 'not_filled':
-			config.set('Discord_link','rr', options.prefix+'_zone_rr.link')
+			config.set('Discord_link','rr', os.path.abspath(options.prefix+'_zone_rr.link'))
 			config.set('General','rr', 'yes')
 		else:
 			config.set('General','rr', 'no')
-			
+
 		if options.ins != 'not_filled':
-			config.set('Discord_link','ins', options.prefix+'_zone_ins.link')
+			config.set('Discord_link','ins', os.path.abspath(options.prefix+'_zone_ins.link'))
 			config.set('General','ins', 'yes')
 		else:
 			config.set('General','ins', 'no')
-			
+
 		if options.delet != 'not_filled':
-			config.set('Discord_link','delet', options.prefix+'_zone_delet.link')
+			config.set('Discord_link','delet', os.path.abspath(options.prefix+'_zone_delet.link'))
 			config.set('General','delet', 'yes')
 		else:
 			config.set('General','delet', 'no')
-			
+
 		if options.chr_rr != 'not_filled':
-			config.set('Discord_link','chr_rr', options.prefix+'_zone_chr_rr.link')
-			config.set('Discord_zone','chr_rr', options.chr_rr)
+			config.set('Discord_link','chr_rr', os.path.abspath(options.prefix+'_zone_chr_rr.link'))
+			config.set('Discord_zone','chr_rr', os.path.abspath(options.chr_rr))
 			config.set('General','chr_rr', 'yes')
 		else:
 			config.set('General','chr_rr', 'no')
-			
+
 		if options.chr_rf != 'not_filled':
-			config.set('Discord_link','chr_rf', options.prefix+'_zone_chr_rf.link')
-			config.set('Discord_zone','chr_rf', options.chr_rf)
+			config.set('Discord_link','chr_rf', os.path.abspath(options.prefix+'_zone_chr_rf.link'))
+			config.set('Discord_zone','chr_rf', os.path.abspath(options.chr_rf))
 			config.set('General','chr_rf', 'yes')
 		else:
 			config.set('General','chr_rf', 'no')
-			
+
 		if options.chr_fr != 'not_filled':
-			config.set('Discord_link','chr_fr', options.prefix+'_zone_chr_fr.link')
-			config.set('Discord_zone','chr_fr', options.chr_fr)
+			config.set('Discord_link','chr_fr', os.path.abspath(options.prefix+'_zone_chr_fr.link'))
+			config.set('Discord_zone','chr_fr', os.path.abspath(options.chr_fr))
 			config.set('General','chr_fr', 'yes')
 		else:
 			config.set('General','chr_fr', 'no')
-			
+
 		if options.chr_ff != 'not_filled':
-			config.set('Discord_link','chr_ff', options.prefix+'_zone_chr_ff.link')
-			config.set('Discord_zone','chr_ff', options.chr_ff)
+			config.set('Discord_link','chr_ff', os.path.abspath(options.prefix+'_zone_chr_ff.link'))
+			config.set('Discord_zone','chr_ff', os.path.abspath(options.chr_ff))
 			config.set('General','chr_ff', 'yes')
 		else:
 			config.set('General','chr_ff', 'no')
-			
+
 		if options.liste_read != 'not_filled':
 			config.add_section('Read_link')
-			config.set('Read_link','rf', options.prefix+'_read_rf.link')
-			config.set('Read_link','fr', options.prefix+'_read_fr.link')
-			config.set('Read_link','ff', options.prefix+'_read_ff.link')
-			config.set('Read_link','rr', options.prefix+'_read_rr.link')
-			config.set('Read_link','ins', options.prefix+'_read_ins.link')
-			config.set('Read_link','del', options.prefix+'_read_delet.link')
-			config.set('Read_link','chr_rr', options.prefix+'_read_chr_rr.link')
-			config.set('Read_link','chr_rf', options.prefix+'_read_chr_rf.link')
-			config.set('Read_link','chr_fr', options.prefix+'_read_chr_fr.link')
-			config.set('Read_link','chr_ff', options.prefix+'_read_chr_ff.link')
+			config.set('Read_link','rf', os.path.abspath(options.prefix+'_read_rf.link'))
+			config.set('Read_link','fr', os.path.abspath(options.prefix+'_read_fr.link'))
+			config.set('Read_link','ff', os.path.abspath(options.prefix+'_read_ff.link'))
+			config.set('Read_link','rr', os.path.abspath(options.prefix+'_read_rr.link'))
+			config.set('Read_link','ins', os.path.abspath(options.prefix+'_read_ins.link'))
+			config.set('Read_link','del', os.path.abspath(options.prefix+'_read_delet.link'))
+			config.set('Read_link','chr_rr', os.path.abspath(options.prefix+'_read_chr_rr.link'))
+			config.set('Read_link','chr_rf', os.path.abspath(options.prefix+'_read_chr_rf.link'))
+			config.set('Read_link','chr_fr', os.path.abspath(options.prefix+'_read_chr_fr.link'))
+			config.set('Read_link','chr_ff', os.path.abspath(options.prefix+'_read_chr_ff.link'))
 			config.set('General','read_rf', 'yes')
 			config.set('General','read_fr', 'yes')
 			config.set('General','read_ff', 'yes')
@@ -595,17 +724,17 @@ def __main__():
 			config.set('General','read_chr_rf', 'no')
 			config.set('General','read_chr_fr', 'no')
 			config.set('General','read_chr_ff', 'no')
-			
+
 		if options.dis_prop != 'not_filled':
 			config.add_section('Proportion')
-			config.set('Proportion','prop', options.dis_prop)
+			config.set('Proportion','prop', os.path.abspath(options.dis_prop))
 			config.set('General','prop', 'yes')
 		else:
 			config.set('General','prop', 'no')
-			
+
 		if options.agp != 'not_filled':
 			config.add_section('Scaffold')
-			config.set('Scaffold','scaff_tile', options.prefix+'_scaffold.tile')
+			config.set('Scaffold','scaff_tile', os.path.abspath(options.prefix+'_scaffold.tile'))
 			config.set('General','scaff_tile', 'yes')
 		else:
 			config.set('General','scaff_tile', 'no')
@@ -614,13 +743,13 @@ def __main__():
 			config.write(configfile)
 	else:
 		config.add_section('General')
-		config.set('General','chr', options.chr)
-		config.set('General','out_kar', options.out_kar)
-		config.set('General','out_N', options.out_N)
+		config.set('General','chr', os.path.abspath(options.chr))
+		config.set('General','out_kar', os.path.abspath(options.out_kar))
+		config.set('General','out_N', os.path.abspath(options.out_N))
 		config.set('General','orient', options.orient)
 		if options.cov != 'not_filled':
 			config.add_section('Coverage')
-			config.set('Coverage','cov', options.out_cov)
+			config.set('Coverage','cov', os.path.abspath(options.out_cov))
 			config.set('General','cov', 'yes')
 			config.set('Coverage','median_cov', str(Value[0]))
 			config.set('Coverage','mean_cov', str(Value[1]))
@@ -629,75 +758,75 @@ def __main__():
 		config.add_section('Discord_link')
 		config.add_section('Discord_zone')
 		if options.frf != 'not_filled':
-			config.set('Discord_link','frf', options.out_frf)
+			config.set('Discord_link','frf', os.path.abspath(options.out_frf))
 			config.set('General','frf', 'yes')
 		else:
 			config.set('General','frf', 'no')
-			
+
 		if options.ff != 'not_filled':
-			config.set('Discord_link','ff', options.out_ff)
+			config.set('Discord_link','ff', os.path.abspath(options.out_ff))
 			config.set('General','ff', 'yes')
 		else:
 			config.set('General','ff', 'no')
-			
+
 		if options.rr != 'not_filled':
-			config.set('Discord_link','rr', options.out_rr)
+			config.set('Discord_link','rr', os.path.abspath(options.out_rr))
 			config.set('General','rr', 'yes')
 		else:
 			config.set('General','rr', 'no')
-			
+
 		if options.ins != 'not_filled':
-			config.set('Discord_link','ins', options.out_ins)
+			config.set('Discord_link','ins', os.path.abspath(options.out_ins))
 			config.set('General','ins', 'yes')
 		else:
 			config.set('General','ins', 'no')
-			
+
 		if options.delet != 'not_filled':
-			config.set('Discord_link','delet', options.out_delet)
+			config.set('Discord_link','delet', os.path.abspath(options.out_delet))
 			config.set('General','delet', 'yes')
 		else:
 			config.set('General','delet', 'no')
-			
+
 		if options.chr_rr != 'not_filled':
-			config.set('Discord_link','chr_rr', options.out_chr_rr)
-			config.set('Discord_zone','chr_rr', options.chr_rr)
+			config.set('Discord_link','chr_rr', os.path.abspath(options.out_chr_rr))
+			config.set('Discord_zone','chr_rr', os.path.abspath(options.chr_rr))
 			config.set('General','chr_rr', 'yes')
 		else:
 			config.set('General','chr_rr', 'no')
-			
+
 		if options.chr_rf != 'not_filled':
-			config.set('Discord_link','chr_rf', options.out_chr_rf)
-			config.set('Discord_zone','chr_rf', options.chr_rf)
+			config.set('Discord_link','chr_rf', os.path.abspath(options.out_chr_rf))
+			config.set('Discord_zone','chr_rf', os.path.abspath(options.chr_rf))
 			config.set('General','chr_rf', 'yes')
 		else:
 			config.set('General','chr_rf', 'no')
-			
+
 		if options.chr_fr != 'not_filled':
-			config.set('Discord_link','chr_fr', options.out_chr_fr)
-			config.set('Discord_zone','chr_fr', options.chr_fr)
+			config.set('Discord_link','chr_fr', os.path.abspath(options.out_chr_fr))
+			config.set('Discord_zone','chr_fr', os.path.abspath(options.chr_fr))
 			config.set('General','chr_fr', 'yes')
 		else:
 			config.set('General','chr_fr', 'no')
-			
+
 		if options.chr_ff != 'not_filled':
-			config.set('Discord_link','chr_ff', options.out_chr_ff)
-			config.set('Discord_zone','chr_ff', options.chr_ff)
+			config.set('Discord_link','chr_ff', os.path.abspath(options.out_chr_ff))
+			config.set('Discord_zone','chr_ff', os.path.abspath(options.chr_ff))
 			config.set('General','chr_ff', 'yes')
 		else:
 			config.set('General','chr_ff', 'no')
-			
+
 		if options.liste_read != 'not_filled':
 			config.add_section('Read_link')
-			config.set('Read_link','rf', options.Rout_rf)
-			config.set('Read_link','fr', options.Rout_fr)
-			config.set('Read_link','ff', options.Rout_ff)
-			config.set('Read_link','rr', options.Rout_rr)
-			config.set('Read_link','ins', options.Rout_ins)
-			config.set('Read_link','del', options.Rout_delet)
-			config.set('Read_link','chr_rr', options.Rout_chr_rr)
-			config.set('Read_link','chr_rf', options.Rout_chr_rf)
-			config.set('Read_link','chr_fr', options.Rout_chr_fr)
-			config.set('Read_link','chr_ff', options.Rout_chr_ff)
+			config.set('Read_link','rf', os.path.abspath(options.Rout_rf))
+			config.set('Read_link','fr', os.path.abspath(options.Rout_fr))
+			config.set('Read_link','ff', os.path.abspath(options.Rout_ff))
+			config.set('Read_link','rr', os.path.abspath(options.Rout_rr))
+			config.set('Read_link','ins', os.path.abspath(options.Rout_ins))
+			config.set('Read_link','del', os.path.abspath(options.Rout_delet))
+			config.set('Read_link','chr_rr', os.path.abspath(options.Rout_chr_rr))
+			config.set('Read_link','chr_rf', os.path.abspath(options.Rout_chr_rf))
+			config.set('Read_link','chr_fr', os.path.abspath(options.Rout_chr_fr))
+			config.set('Read_link','chr_ff', os.path.abspath(options.Rout_chr_ff))
 			config.set('General','read_rf', 'yes')
 			config.set('General','read_fr', 'yes')
 			config.set('General','read_ff', 'yes')
@@ -719,22 +848,22 @@ def __main__():
 			config.set('General','read_chr_rf', 'no')
 			config.set('General','read_chr_fr', 'no')
 			config.set('General','read_chr_ff', 'no')
-			
+
 		if options.dis_prop != 'not_filled':
 			config.add_section('Proportion')
-			config.set('Proportion','prop', options.dis_prop)
+			config.set('Proportion','prop', os.path.abspath(options.dis_prop))
 			config.set('General','prop', 'yes')
 		else:
 			config.set('General','prop', 'no')
-			
+
 		if options.agp != 'not_filled':
 			config.add_section('Scaffold')
-			config.set('Scaffold','scaff_tile', options.out_scaff)
+			config.set('Scaffold','scaff_tile', os.path.abspath(options.out_scaff))
 			config.set('General','scaff_tile', 'yes')
 		else:
 			config.set('General','scaff_tile', 'no')
 		# writting configuration file
 		with open(options.output, 'wb') as configfile:
 			config.write(configfile)
-		
+
 if __name__ == "__main__": __main__()

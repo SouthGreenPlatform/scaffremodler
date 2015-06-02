@@ -1,8 +1,8 @@
 import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, math, datetime
 
 def stop_err( msg ):
-    sys.stderr.write( "%s\n" % msg )
-    sys.exit()
+	sys.stderr.write( "%s\n" % msg )
+	sys.exit()
 
 def run_job (cmd_line, ERROR):
 	print cmd_line
@@ -33,27 +33,37 @@ def run_job (cmd_line, ERROR):
 def define_regions(DRAW, CHR):
 	#Record regions to draw
 	dic = {}
+	chrDic = {}
 	taille_total = 0
+	f = open(CHR, 'r')
+	for line in f:
+		if line.strip():
+			cols = line.split()
+			chrDic[cols[0]] = int(cols[1])
+	f.close()
+
 	if DRAW == 'all':
-		file = open(CHR)
-		for line in file:
-			data = line.split()
-			if data:
-				dic[data[0]] = [[0, int(data[1])+1]]
-				taille_total += int(data[1])
+		for chrom in chrDic:
+			dic[chrom] = [[0, chrDic[chrom]+1]]
+			taille_total += chrDic[chrom]
 	else:
 		dico = {}
-		liste = DRAW.split("=")
-		while liste:
-			if liste[0] in dico:
-				dico[liste[0]].append([int(liste[1]), int(liste[2])+1])
-			else:
-				dico[liste[0]] = []
-				dico[liste[0]].append([int(liste[1]), int(liste[2])+1])
-			del liste[0]
-			del liste[0]
-			del liste[0]
-		#to merge overlapping regions
+		regions = DRAW.split('-')
+		for region in regions:
+			elts = region.split(':')
+			if not elts[0] in dico:
+				dico[elts[0]] = []
+
+			if len(elts) == 3: # we have coordinate
+				dico[elts[0]].append([int(elts[1]), int(elts[2])+1])
+			else: # draw the whole chromosome
+				try:
+					dico[elts[0]].append([0, chrDic[elts[0]]+1])
+				except Exception, e:
+					print (e)
+					print ("No chromosome name \""+elts[0]+"\" found in the file : "+CHR+".")
+
+		# to merge overlapping regions
 		chrom = ''
 		for n in dico:
 			list_2_sort = list(dico[n])
@@ -73,7 +83,7 @@ def define_regions(DRAW, CHR):
 					fin = int(k[1])
 			dic[n].append([debut, fin])
 			taille_total = taille_total + (fin-debut) + 1
-			
+
 	if taille_total < 5000:
 		print 'Unit : 1 b'
 		unit = '10'
@@ -92,7 +102,7 @@ def define_regions(DRAW, CHR):
 	else:
 		print 'Unit : 10 Mb'
 		unit = '10000000'
-		
+
 	#creation of chromsomes to draw
 	chr_order = '^'
 	chr_name = ''
@@ -286,15 +296,15 @@ def create_kar(KAR, OUT, DIC):
 	file.close()
 
 def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, SCAFF, DISCORD, FRF, FF, RR, INS, DELET, CHR_RR, CHR_FR, CHR_RF, CHR_FF, READ_FR, READ_RF, READ_FF, READ_RR, READ_INS, READ_DELET, READ_CHR_RR, READ_CHR_RF, READ_CHR_FR, READ_CHR_FF, TEXT, KAR):
-	
+
 	liste = []
-	
+
 	configuration = ConfigParser.RawConfigParser()
 	configuration.read(CONFIG)
 	configuration.get('General','out_kar')
-	
+
 	create_kar(os.path.realpath(configuration.get('General','out_kar')), KAR, DIC)
-	
+
 	outfile = open(CONF,'w')
 	outfile.write('<colors>\n')
 	outfile.write('<<include etc/colors.conf>>\n')
@@ -318,7 +328,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 	outfile.write('chromosomes_units = %s\n' % UNIT)
 	outfile.write('chromosomes = %s\n' % CHR)
 	outfile.write('chromosomes_order = %s\n' % ORDER)
-	
+
 	if READ_FR == 'y' or READ_RF == 'y' or READ_FF == 'y' or READ_RR == 'y' or READ_INS == 'y' or READ_DELET == 'y' or READ_CHR_RR == 'y' or READ_CHR_RF == 'y' or READ_CHR_FR == 'y' or READ_CHR_FF == 'y' or FRF == 'y' or FF == 'y' or RR == 'y' or DELET == 'y' or INS == 'y' or CHR_FF == 'y' or CHR_RF == 'y' or CHR_FR == 'y' or CHR_RR == 'y':
 		if (configuration.get('General','read_chr_rr') == 'yes' and READ_CHR_RR == 'y') or (configuration.get('General','read_chr_fr') == 'yes' and READ_CHR_FR == 'y') or (configuration.get('General','read_chr_ff') == 'yes' and READ_CHR_FF == 'y') or (configuration.get('General','read_chr_rf') == 'yes' and READ_CHR_RF == 'y') or (configuration.get('General','read_ins') == 'yes' and READ_INS == 'y') or (configuration.get('General','read_del') == 'yes' and READ_DELET == 'y') or (configuration.get('General','read_rr') == 'yes' and READ_RR == 'y') or (configuration.get('General','read_rf') == 'yes' and READ_RF == 'y') or (configuration.get('General','read_fr') == 'yes' and READ_FR == 'y') or (configuration.get('General','read_ff') == 'yes' and READ_FF == 'y') or (configuration.get('General','chr_rr') == 'yes' and CHR_RR == 'y') or (configuration.get('General','chr_fr') == 'yes' and CHR_FR == 'y') or (configuration.get('General','chr_ff') == 'yes' and CHR_FF == 'y') or (configuration.get('General','chr_rf') == 'yes' and CHR_RF == 'y') or (configuration.get('General','ins') == 'yes' and INS == 'y') or (configuration.get('General','delet') == 'yes' and DELET == 'y') or (configuration.get('General','rr') == 'yes' and RR == 'y') or (configuration.get('General','frf') == 'yes' and FRF == 'y') or (configuration.get('General','ff') == 'yes' and FF == 'y'):
 			outfile.write('<links>\n')
@@ -364,7 +374,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					rr = tempfile.NamedTemporaryFile().name
 					# print rr
 					liste.append(rr)
-					cree_link_final(DIC, configuration.get('Discord_link','rr'), rr)	
+					cree_link_final(DIC, configuration.get('Discord_link','rr'), rr)
 					outfile.write('<link zone_rr_link>\n')
 					outfile.write('bezier_radius        = 0.45r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -381,7 +391,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					ins = tempfile.NamedTemporaryFile().name
 					# print ins
 					liste.append(ins)
-					cree_link_final(DIC, configuration.get('Discord_link','ins'), ins)	
+					cree_link_final(DIC, configuration.get('Discord_link','ins'), ins)
 					outfile.write('<link zone_ins_link>\n')
 					outfile.write('bezier_radius        = 0.3r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -398,7 +408,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					delet = tempfile.NamedTemporaryFile().name
 					# print delet
 					liste.append(delet)
-					cree_link_final(DIC, configuration.get('Discord_link','delet'), delet)	
+					cree_link_final(DIC, configuration.get('Discord_link','delet'), delet)
 					outfile.write('<link zone_delet_link>\n')
 					outfile.write('bezier_radius        = 0.4r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -415,7 +425,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					chr_rr = tempfile.NamedTemporaryFile().name
 					# print chr_rr
 					liste.append(chr_rr)
-					cree_link_final(DIC, configuration.get('Discord_link','chr_rr'), chr_rr)	
+					cree_link_final(DIC, configuration.get('Discord_link','chr_rr'), chr_rr)
 					outfile.write('<link zone_chr_rr_link>\n')
 					outfile.write('bezier_radius        = 0.45r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -432,7 +442,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					chr_rf = tempfile.NamedTemporaryFile().name
 					# print chr_rf
 					liste.append(chr_rf)
-					cree_link_final(DIC, configuration.get('Discord_link','chr_rf'), chr_rf)	
+					cree_link_final(DIC, configuration.get('Discord_link','chr_rf'), chr_rf)
 					outfile.write('<link zone_chr_rf_link>\n')
 					outfile.write('bezier_radius        = 0.4r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -455,7 +465,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					chr_fr = tempfile.NamedTemporaryFile().name
 					# print chr_fr
 					liste.append(chr_fr)
-					cree_link_final(DIC, configuration.get('Discord_link','chr_fr'), chr_fr)	
+					cree_link_final(DIC, configuration.get('Discord_link','chr_fr'), chr_fr)
 					outfile.write('<link zone_chr_fr_link>\n')
 					outfile.write('bezier_radius        = 0.35r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -478,7 +488,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					chr_ff = tempfile.NamedTemporaryFile().name
 					# print chr_ff
 					liste.append(chr_ff)
-					cree_link_final(DIC, configuration.get('Discord_link','chr_ff'), chr_ff)	
+					cree_link_final(DIC, configuration.get('Discord_link','chr_ff'), chr_ff)
 					outfile.write('<link zone_chr_ff_link>\n')
 					outfile.write('bezier_radius        = 0.5r\n')
 					outfile.write('bezier_radius_purity = 0.5\n')
@@ -518,7 +528,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 				else:
 					print 'Warning, read_fr layer has been requested but files are not found in the config file'
 			if READ_RF == 'y':
-				if (configuration.get('General','read_rf')) == 'yes':	
+				if (configuration.get('General','read_rf')) == 'yes':
 					read_rf = tempfile.NamedTemporaryFile().name
 					# print read_rf
 					liste.append(read_rf)
@@ -568,7 +578,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					read_rr = tempfile.NamedTemporaryFile().name
 					# print read_rr
 					liste.append(read_rr)
-					cree_link_final(DIC, configuration.get('Read_link','rr'), read_rr)	
+					cree_link_final(DIC, configuration.get('Read_link','rr'), read_rr)
 					outfile.write('<link read_rr_link>\n')
 					outfile.write('perturb        = no\n')
 					outfile.write('bezier_radius        = 0.45r\n')
@@ -587,7 +597,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 					read_ins = tempfile.NamedTemporaryFile().name
 					# print read_ins
 					liste.append(read_ins)
-					cree_link_final(DIC, configuration.get('Read_link','ins'), read_ins)	
+					cree_link_final(DIC, configuration.get('Read_link','ins'), read_ins)
 					outfile.write('<link read_ins_link>\n')
 					outfile.write('perturb        = no\n')
 					outfile.write('bezier_radius        = 0.6r\n')
@@ -709,7 +719,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 				else:
 					print 'Warning, read_chr_rr layer has been requested but files are not found in the config file'
 			outfile.write('</links>\n')
-			
+
 	if COV == 'y' or SCAFF == 'y' or DISCORD == 'y' or TEXT == 'y':
 		if TEXT == 'y' or (configuration.get('General','prop') == 'yes' and DISCORD == 'y') or (configuration.get('General','cov') == 'yes' and COV == 'y') or (configuration.get('General','scaff_tile') == 'yes' and SCAFF == 'y'):
 			outfile.write('<plots>\n')
@@ -721,7 +731,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 				outfile.write('<plot>\n')
 				outfile.write('z = 1\n')
 				outfile.write('show             = yes\n')
-				outfile.write('label_rotate     = no\n')
+				# outfile.write('label_rotate     = no\n')
 				outfile.write('type             = text\n')
 				outfile.write('color            = black\n')
 				outfile.write('file             = %s\n' % text)
@@ -949,7 +959,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 				else:
 					print 'Warning, scaffold layer has been requested but files are not found in the config file'
 			outfile.write('</plots>\n')
-	
+
 	outfile.write('anglestep = 0.5\n')
 	outfile.write('minslicestep = 10\n')
 	outfile.write('beziersamples = 40\n')
@@ -1009,11 +1019,11 @@ def __main__():
 	#Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Guillaume MARTIN : guillaume.martin@cirad.fr\n\n"
 	"This program generate the circos picture")
-	
+
 	# Wrapper options.
 	#For input
 	parser.add_option( '', '--config', dest='config', default='not_filled', help='The conf file generated by conf4circos.py')
-	parser.add_option( '', '--draw', dest='draw', default='all', help='A list of chromosome position separated with = (ex:chr01=1000=20000), [default: %default]')
+	parser.add_option( '', '--draw', dest='draw', default='all', help='A list of chromosome separated with \'-\'. The position on the chromosome are separated by \':\'. (ex:chr01-chr02:1000000:2000000-chr8), [default: %default]')
 	parser.add_option( '', '--cov', dest='cov', default='y', help='Draw coverage plot (y or n), [default: %default]')
 	parser.add_option( '', '--scaff', dest='scaff', default='y', help='Draw scaffold position (y or n), [default: %default]')
 	parser.add_option( '', '--discord', dest='discord', default='y', help='Draw discordant proportion plot (y or n), [default: %default]')
@@ -1026,8 +1036,8 @@ def __main__():
 	parser.add_option( '', '--chr_rf', dest='chr_rf', default='y', help='Draw discordant chr_rf link (y or n), [default: %default]')
 	parser.add_option( '', '--chr_fr', dest='chr_fr', default='y', help='Draw discordant chr_fr link (y or n), [default: %default]')
 	parser.add_option( '', '--chr_ff', dest='chr_ff', default='y', help='Draw discordant chr_ff link (y or n), [default: %default]')
-	
-	
+
+
 	parser.add_option( '', '--read_fr', dest='read_fr', default='y', help='Draw read fr link (y or n), [default: %default]')
 	parser.add_option( '', '--read_rf', dest='read_rf', default='y', help='Draw read rf link (y or n), [default: %default]')
 	parser.add_option( '', '--read_ff', dest='read_ff', default='y', help='Draw read ff link (y or n), [default: %default]')
@@ -1038,49 +1048,50 @@ def __main__():
 	parser.add_option( '', '--read_chr_rf', dest='read_chr_rf', default='y', help='Draw read chr_rf link (y or n), [default: %default]')
 	parser.add_option( '', '--read_chr_fr', dest='read_chr_fr', default='y', help='Draw read chr_fr link (y or n), [default: %default]')
 	parser.add_option( '', '--read_chr_ff', dest='read_chr_ff', default='y', help='Draw read chr_ff link (y or n), [default: %default]')
-	
+
 	parser.add_option( '', '--text', dest='text', default='y', help='Locate N regions, [default: %default]')
-	
+
 	parser.add_option( '', '--labels', dest='labels', default='y', help='Draw reference sequence name, [default: %default]')
-	
+
 	parser.add_option( '', '--out', dest='out', default='circos.png', help='The output file name')
 	(options, args) = parser.parse_args()
-	
-	
-	
+
+
+
 	pathname = os.path.dirname(sys.argv[0])
-	
+
 	loca_programs = ConfigParser.RawConfigParser()
 	loca_programs.read(pathname+'/loca_programs.conf')
-	
 
-	
+
+
 	if options.config == 'not_filled':
 		sys.exit('--config argument is missing')
-	
+
 	t0 = datetime.datetime.now()
 	config = ConfigParser.RawConfigParser()
 	config.read(options.config)
 
 	chr_info = define_regions(options.draw, config.get('General','chr'))
-	
-	
+
+
 	ideogram = tempfile.NamedTemporaryFile().name+'.ideo'
 	ticks = tempfile.NamedTemporaryFile().name+'.ticks'
 	conf = tempfile.NamedTemporaryFile().name+'.conf'
 	kar = tempfile.NamedTemporaryFile().name+'.kar'
+
 	create_ideogram(ideogram, options.labels)
 	create_ticks(ticks, chr_info[2])
 	print ideogram
 	print ticks
 	print conf
 	print kar
-	
+
 	liste_rm = create_conf(chr_info[3], conf, ideogram, ticks, options.config, os.path.splitext(options.out)[0], chr_info[0], chr_info[1], chr_info[2], options.cov, options.scaff, options.discord, options.frf, options.ff, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, options.read_fr, options.read_rf, options.read_ff, options.read_rr, options.read_ins, options.read_delet, options.read_chr_rr, options.read_chr_rf, options.read_chr_fr, options.read_chr_ff, options.text, kar)
-	
+
 	run_circos = '%s %s -conf %s' % (loca_programs.get('Programs','perl'), loca_programs.get('Programs','circos'), conf)
 	run_job(run_circos, 'Bug in run circos')
-	
+
 	os.system('rm '+ideogram)
 	os.system('rm '+ticks)
 	os.system('rm '+conf)
@@ -1093,5 +1104,5 @@ def __main__():
 	if os.path.splitext(options.out)[0]+'.png' != options.out:
 		os.system('mv '+os.path.splitext(options.out)[0]+'.png '+options.out)
 	print datetime.datetime.now() - t0
-	
+
 if __name__ == "__main__": __main__()

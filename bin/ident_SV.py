@@ -1,56 +1,115 @@
 import optparse, os, shutil, subprocess, sys, tempfile, fileinput, ConfigParser, operator, time, random
 
-def couv2couv(CHR, COV, PREFIX):
-	liste = []
-	file = open(CHR)
-	for line in file:
-		data = line.split()
-		if data:
-			grep(COV, PREFIX+'_'+data[0], data[0], 'keep', 'all')
-			liste.append(PREFIX+'_'+data[0])
-	return liste
+# def couv2couv(CHR, COV, PREFIX):
+	# liste = []
+	# file = open(CHR)
+	# for line in file:
+		# data = line.split()
+		# if data:
+			# grep(COV, PREFIX+'_'+data[0], data[0], 'keep', 'all')
+			# liste.append(PREFIX+'_'+data[0])
+	# return liste
 
-def grep(FILE, OUT, MOT, KEEP, COL):
-	outfile = open(OUT, 'w')
+# def grep(FILE, OUT, MOT, KEEP, COL):
+	# outfile = open(OUT, 'w')
+	# i = 0
+	# if COL == 'all':
+		# if KEEP == 'keep':
+			# for line in open(FILE):
+				# if MOT in line.split():
+					# outfile.write(line)
+					# i += 1
+		# elif KEEP == 'rm':
+			# for line in open(FILE):
+				# if not(MOT in line.split()):
+					# outfile.write(line)
+					# i += 1
+		# else:
+			# sys.exit('bug in grep')
+	# else:
+		# if KEEP == 'keep':
+			# for line in open(FILE):
+				# if MOT in line.split():
+					# data = line.split()
+					# liste = []
+					# for n in COL:
+						# liste.append(data[n])
+					# outfile.write('\t'.join(liste)+'\n')
+					# i += 1
+		# elif KEEP == 'rm':
+			# for line in open(FILE):
+				# if not(MOT in line.split()):
+					# data = line.split()
+					# liste = []
+					# for n in COL:
+						# liste.append(data[n])
+					# outfile.write('\t'.join(liste)+'\n')
+					# i += 1
+		# else:
+			# sys.exit('bug in grep')
+	# outfile.close()
+	# return i
+	
+def couv2couv(chrFile, covFile, covDic):
+	"""
+		Stock in memory the coverture of each chromosomes
+		
+		:param chrFile: the path to the tabular chromosome file : chr_name chr_size
+		:type chrFile: str:
+		:param chrFile: the path to the tabular coverture file : chr_name position coverture
+		:type chrFile: str:
+		:param covDic: The dictionnary to stock the coverture
+		:type covDic: dict
+	"""
+	chr = ""
+	chrSize = {}
+	tempListeCov = []
 	i = 0
-	if COL == 'all':
-		if KEEP == 'keep':
-			for line in open(FILE):
-				if MOT in line.split():
-					outfile.write(line)
+	chrInput = open(chrFile, 'r')
+	for line in chrInput:  # Stock the size of each chromosome in a dictionnary
+		if line.strip():
+			cols = line.split()
+			chrSize[cols[0]] = int(cols[1])
+	chrInput.close()
+	
+	covInput = open(covFile, 'r')
+	for line in covInput:
+		if line.strip():
+			cols = line.split()
+			if not cols[0] in covDic:  # new chromosome
+				if not chr:  # First line
+					while i < int(cols[1]):
+						tempListeCov.append(0)
+						i += 1
+					tempListeCov.append(int(cols[2]))
 					i += 1
-		elif KEEP == 'rm':
-			for line in open(FILE):
-				if not(MOT in line.split()):
-					outfile.write(line)
+					chr = cols[0]
+				else:
+					while i < chrSize[chr]:
+						tempListeCov.append(0)
+						i += 1
+					covDic[chr] = tempListeCov
+					tempListeCov = []
+					chr = cols[0]
+					i = 0
+					while i < int(cols[1]):
+						tempListeCov.append(0)
+						i += 1
+					tempListeCov.append(int(cols[2]))
 					i += 1
-		else:
-			sys.exit('bug in grep')
-	else:
-		if KEEP == 'keep':
-			for line in open(FILE):
-				if MOT in line.split():
-					data = line.split()
-					liste = []
-					for n in COL:
-						liste.append(data[n])
-					outfile.write('\t'.join(liste)+'\n')
+			else:  # same chromosome
+				while i < int(cols[1]):
+					tempListeCov.append(0)
 					i += 1
-		elif KEEP == 'rm':
-			for line in open(FILE):
-				if not(MOT in line.split()):
-					data = line.split()
-					liste = []
-					for n in COL:
-						liste.append(data[n])
-					outfile.write('\t'.join(liste)+'\n')
-					i += 1
-		else:
-			sys.exit('bug in grep')
-	outfile.close()
-	return i
+				tempListeCov.append(int(cols[2]))
+				i += 1
+	while i < chrSize[chr]:
+		tempListeCov.append(0)
+		i += 1
+	covDic[chr] = tempListeCov
+	tempListeCov = []
 
-def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT, OUT, COV_FILE, EXP_COV, PLOID, TYPE):
+def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT, OUT, EXP_COV, PLOID, TYPE):
 	outfile = open(OUT,'w')
 	file = open(FF)
 	dic_FF = {}
@@ -230,13 +289,13 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 							pos2 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
 							#Maintenant s'occuper des couvertures
-							if couv_med_reg(pos1[0], pos2[1], n, COV_FILE+'_'+n) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos1[0], pos2[1], n) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion:\t'+n+'\t'+str(pos1[0])+'\t'+str(pos2[1])+'\ttarget:\t'+n+'\t'+str(pos3[1])+'\t'+str(pos4[0])+'\n')
 						elif pos1[0] <= k[1] + 2*INSERT and  pos1[0] + vasouille >= k[1] and pos3[0] + vasouille >= k[4] and pos1[1] <= k[3] + vasouille:#potential duplication
 							pos2 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
 							#Maintenant s'occuper des couvertures
-							if couv_med_reg(pos4[0], pos3[1], n, COV_FILE+'_'+n) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos4[0], pos3[1], n) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion:\t'+n+'\t'+str(pos4[0])+'\t'+str(pos3[1])+'\ttarget:\t'+n+'\t'+str(pos2[1])+'\t'+str(pos1[0])+'\n')
 	#Now it's time to detect simple inversions
 	if TYPE == '0':
@@ -258,7 +317,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 			for j in dic_DEL[n]:
 				pos1 = [j[0], j[1]]
 				pos3 = [j[3], j[4]]
-				if couv_med_reg_del(pos1[1], pos3[0], n, COV_FILE+'_'+n) <= (EXP_COV - float(EXP_COV)*PLOID):
+				if couv_med_reg_del(pos1[1], pos3[0], n) <= (EXP_COV - float(EXP_COV)*PLOID):
 					outfile.write('deletion\tregion:\t'+n+'\t'+str(pos1[1])+'\t'+str(pos3[0])+'\n')
 	#Now it's time to detect simple tandem duplication
 	if TYPE == '3':
@@ -266,7 +325,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 			for j in dic_FR[n]:
 				pos1 = [j[0], j[1]]
 				pos3 = [j[3], j[4]]
-				if couv_med_reg(pos1[0], pos3[1], n, COV_FILE+'_'+n) >= (EXP_COV + float(EXP_COV)*PLOID):
+				if couv_med_reg(pos1[0], pos3[1], n) >= (EXP_COV + float(EXP_COV)*PLOID):
 					outfile.write('tandem_duplication\tregion:\t'+n+'\t'+str(pos1[0])+'\t'+str(pos3[1])+'\n')
 	#Now it's time to detect simple reciprocal translocations
 	if TYPE == '0':
@@ -339,7 +398,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 						if pos3[0] <= k[4] + 2*INSERT and  pos3[0] + vasouille >= k[4] and k[0] + vasouille >= pos1[1]:# F RR F structure
 							pos2 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
-							if couv_med_reg(pos1[0], pos2[1], n, COV_FILE+'_'+n) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos1[0], pos2[1], n) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion_inv:\t'+n+'\t'+str(pos1[0])+'\t'+str(pos2[1])+'\ttarget:\t'+n+'\t'+str(pos4[1])+'\t'+str(pos3[0])+'\n')
 	if TYPE == '5':
 		for n in dic_FF:
@@ -353,7 +412,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 						if pos1[0] <= k[1] + 2*INSERT and  pos1[0] + vasouille >= k[1] and k[3] + vasouille >= pos3[1]:# R FF R structure
 							pos2 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
-							if couv_med_reg(pos3[0], pos4[1], n, COV_FILE+'_'+n) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos3[0], pos4[1], n) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion_inv:\t'+n+'\t'+str(pos3[0])+'\t'+str(pos4[1])+'\ttarget:\t'+n+'\t'+str(pos2[1])+'\t'+str(pos1[0])+'\n')
 	#Now it's time to detect inversion of both fragments of reciprocal translocation
 	if TYPE == '0':
@@ -454,7 +513,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 						if k[0] + vasouille >= pos1[1] and k[0] <= pos1[1] + 2*INSERT and j[2] == k[2]:
 							pos3 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
-							if couv_med_reg(pos2[0], pos4[1], j[2], COV_FILE+'_'+j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos2[0], pos4[1], j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion:\t'+k[2]+'\t'+str(pos2[0])+'\t'+str(pos4[1])+'\ttarget:\t'+n+'\t'+str(pos1[1])+'\t'+str(pos3[0])+'\n')
 	if TYPE == '7':
 		for n in dic_CHR_fr_rev:
@@ -468,7 +527,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 						if k[0] + vasouille >= pos1[1] and k[0] <= pos1[1] + 2*INSERT and j[2] == k[2]:
 							pos3 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
-							if couv_med_reg(pos2[0], pos4[1], j[2], COV_FILE+'_'+j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos2[0], pos4[1], j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion:\t'+k[2]+'\t'+str(pos2[0])+'\t'+str(pos4[1])+'\ttarget:\t'+n+'\t'+str(pos1[1])+'\t'+str(pos3[0])+'\n')
 	#Now it's time to detect simple translocations with inversion
 	if TYPE == '0':
@@ -517,7 +576,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 						if k[0] + vasouille >= pos1[1] and k[0] <= pos1[1] + 2*INSERT and j[2] == k[2]:
 							pos3 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
-							if couv_med_reg(pos4[0], pos2[1], j[2], COV_FILE+'_'+j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos4[0], pos2[1], j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion_inv:\t'+k[2]+'\t'+str(pos4[0])+'\t'+str(pos2[1])+'\ttarget:\t'+n+'\t'+str(pos1[1])+'\t'+str(pos3[0])+'\n')
 	if TYPE == '9':
 		for n in dic_CHR_rr_rev:
@@ -531,7 +590,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 						if k[0] + vasouille >= pos1[1] and k[0] <= pos1[1] + 2*INSERT and j[2] == k[2]:
 							pos3 = [k[0], k[1]]
 							pos4 = [k[3], k[4]]
-							if couv_med_reg(pos4[0], pos2[1], j[2], COV_FILE+'_'+j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
+							if couv_med_reg(pos4[0], pos2[1], j[2]) >= (EXP_COV + float(EXP_COV)*PLOID):
 								outfile.write('duplication\tregion_inv:\t'+k[2]+'\t'+str(pos4[0])+'\t'+str(pos2[1])+'\ttarget:\t'+n+'\t'+str(pos1[1])+'\t'+str(pos3[0])+'\n')
 	#Now it's time to detect simple reciprocal translocations
 	if TYPE == '0':
@@ -606,37 +665,74 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 														outfile.write('reciprocal_translocation\tregion1:\t'+n+'\t'+str(pos2[0])+'\t'+str(pos7[1])+'\tregion2_inv:\t'+j[2]+'\t'+str(pos3[0])+'\t'+str(pos6[1])+'\n')
 	outfile.close()
 
-def couv_med_reg(DEB, FIN, CHR, COUV):
-	file = open(COUV)
-	LISTE = []
-	for line in file:
-		data = line.split()
-		if data:
-			if data[0] == CHR:
-				if int(data[1]) >= DEB and int(data[1]) <= FIN:
-					LISTE.append(int(data[2]))
-				elif int(data[1]) > FIN:
-					break
-	if len(LISTE) == 0:
+# def couv_med_reg(DEB, FIN, CHR, COUV):
+	# file = open(COUV)
+	# LISTE = []
+	# for line in file:
+		# data = line.split()
+		# if data:
+			# if data[0] == CHR:
+				# if int(data[1]) >= DEB and int(data[1]) <= FIN:
+					# LISTE.append(int(data[2]))
+				# elif int(data[1]) > FIN:
+					# break
+	# if len(LISTE) == 0:
+		# return 0
+	# else:
+		# return mediane(LISTE)
+		
+def couv_med_reg(deb, fin, chr):
+	"""
+		:param chr: The chromosome name
+		:type chr: str
+		:param deb: the start position
+		:type deb: int
+		:param end: The end position
+		:type end: int
+	"""
+	subListNoGap = []
+	for site in covDic[chr][deb+1:fin+2]:
+		if site:
+			subListNoGap.append(site)
+	if len(subListNoGap) == 0:
 		return 0
 	else:
-		return mediane(LISTE)
+		return mediane(subListNoGap)
 
-def couv_med_reg_del(DEB, FIN, CHR, COUV):
-	file = open(COUV)
-	LISTE = []
-	for line in file:
-		data = line.split()
-		if data:
-			if data[0] == CHR:
-				if int(data[1]) >= DEB and int(data[1]) <= FIN:
-					LISTE.append(int(data[2]))
-				elif int(data[1]) > FIN:
-					break
-	if len(LISTE) <= 0.5*(FIN-DEB):
+# def couv_med_reg_del(DEB, FIN, CHR, COUV):
+	# file = open(COUV)
+	# LISTE = []
+	# for line in file:
+		# data = line.split()
+		# if data:
+			# if data[0] == CHR:
+				# if int(data[1]) >= DEB and int(data[1]) <= FIN:
+					# LISTE.append(int(data[2]))
+				# elif int(data[1]) > FIN:
+					# break
+	# if len(LISTE) <= 0.5*(FIN-DEB):
+		# return 0
+	# else:
+		# return mediane(LISTE)
+
+def couv_med_reg_del(deb, fin, chr):
+	"""
+		:param chr: The chromosome name
+		:type chr: str
+		:param deb: the start position
+		:type deb: int
+		:param end: The end position
+		:type end: int
+	"""
+	subListNoGap = []
+	for site in covDic[chr][deb+1:fin+2]:
+		if site:
+			subListNoGap.append(site)
+	if len(subListNoGap) <= 0.5*(fin-deb):
 		return 0
 	else:
-		return mediane(LISTE)
+		return mediane(subListNoGap)
+	
 
 def mediane(LISTE):
 	L = sorted(LISTE)
@@ -715,13 +811,15 @@ def __main__():
 	if options.config:
 		config = ConfigParser.RawConfigParser()
 		config.read(options.config)
-		tmp = (tempfile.NamedTemporaryFile().name)+'.cov'
+		covDic = {}
 		if options.orient == 'rf':
-			list2rm = couv2couv(config.get('General','chr'), config.get('Calc_coverage','out'), tmp)
-			indent_discord(options.ff, options.frf, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, config.getfloat('Calc_coverage', 'median_insert'), options.out, tmp, config.getfloat('Calc_coverage', 'median_coverage'), config.getfloat('General','ploid'), options.type)
+			# list2rm = couv2couv(config.get('General','chr'), config.get('Calc_coverage','out'), tmp)
+			couv2couv(config.get('General','chr'), config.get('Calc_coverage','out'), covDic)
+			indent_discord(options.ff, options.frf, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, config.getfloat('Calc_coverage', 'median_insert'), options.out, config.getfloat('Calc_coverage', 'median_coverage'), config.getfloat('General','ploid'), options.type)
 		elif options.orient == 'fr':
-			list2rm = couv2couv(config.get('General','chr'), config.get('Calc_coverage','out'), tmp)
-			indent_discord(options.rr, options.frf, options.ff, options.ins, options.delet, options.chr_ff, options.chr_rf, options.chr_fr, options.chr_rr, config.getfloat('Calc_coverage', 'median_insert'), options.out, tmp, config.getfloat('Calc_coverage', 'median_coverage'), config.getfloat('General','ploid'), options.type)
+			# list2rm = couv2couv(config.get('General','chr'), config.get('Calc_coverage','out'), tmp)
+			couv2couv(config.get('General','chr'), config.get('Calc_coverage','out'), covDic)
+			indent_discord(options.rr, options.frf, options.ff, options.ins, options.delet, options.chr_ff, options.chr_rf, options.chr_fr, options.chr_rr, config.getfloat('Calc_coverage', 'median_insert'), options.out, config.getfloat('Calc_coverage', 'median_coverage'), config.getfloat('General','ploid'), options.type)
 		else:
 			mot = 'Unrecognized orientation: '+options.orient
 			sys.exit(mot)
