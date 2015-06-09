@@ -115,33 +115,14 @@ def Mapping(LOCA_PROGRAMS, TOOL, REF, Q1, Q2, ORIENT, MIN, MAX, QUAL, INDEX, RMI
 			run_job(mapping1, 'Mapping error:\n')
 			run_job(mapping2, 'Mapping error:\n')
 
-			# sorting1 = "%s sort -n -o %s -m 3700M -O sam %s" % (LOCA_PROGRAMS.get('Programs','samtools'), "mate1_sorted.sam", "Cavendish_on_V2.sam_mate1.sam")
-			# sorting2 = "%s sort -n -o %s -m 3700M -O sam %s" % (LOCA_PROGRAMS.get('Programs','samtools'), "mate2_sorted.sam", "Cavendish_on_V2.sam_mate2.sam")
-
-			# listJobs = []
-			# listJobs.append([sorting1, 'Sorting error:\n'])
-			# listJobs.append([sorting2, 'Sorting error:\n'])
 			run_job(sorting1, 'Sorting error:\n')
 			run_job(sorting2, 'Sorting error:\n')
-			# print THREAD
-			# pool = multiprocessing.Pool(processes=int(THREAD))
-			# results = pool.map(worker, listJobs)
-			#
-			# print results
 
-			# os.remove(interm1)
-			# os.remove(interm2)
-
-
-			# run_job(mapping1, 'Mapping error:\n')
-			# run_job(sorting1, 'Sorting error:\n')
-			# os.remove(interm1)
-			# run_job(mapping2, 'Mapping error:\n')
-			# run_job(sorting2, 'Sorting error:\n')
-			# os.remove(interm2)
 			run_job(merging, 'Merging error:\n')
-			# os.remove(interm_sort1)
-			# os.remove(interm_sort2)
+			os.remove(interm1)
+			os.remove(interm2)
+			os.remove(interm_sort1)
+			os.remove(interm_sort2)
 		elif TOOL == 'bowtie2':
 			if INDEX == 'y':
 				build_index = '%s -q -f %s %s' % (LOCA_PROGRAMS.get('Programs','bowtie2-build'), REF, REF)

@@ -1199,7 +1199,7 @@ def __main__():
 		raise ValueError(mot)
 
 	logNameFile = os.path.splitext(options.sam)[0]+'.log'
-
+	logOutput = open(logNameFile, 'w')
 	if os.path.getsize(options.sam) == 0:
 		outfile = open(options.out, 'w')
 		outfile.close()
@@ -1210,8 +1210,6 @@ def __main__():
 		tmp_zone = tmp_name+'.zone'
 		tmp_mate_zone = tmp_name+'_mate.zone'
 		tmp_merge = tmp_name+'.merge'
-
-		logOutput = open(logNameFile, 'w')
 
 		logOutput.write("\nsam file :"+str(options.sam))
 
@@ -1360,4 +1358,7 @@ def __main__():
 
 	logOutput.write("\ntotal time : "+str(datetime.datetime.now() - t_start))
 	logOutput.close()
+	if os.path.exists(options.sam+".bai"):
+		os.remove(otpions.sam+".bai")
+	os.remove(logNameFile)
 if __name__ == "__main__": __main__()
