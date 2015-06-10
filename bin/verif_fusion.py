@@ -134,13 +134,13 @@ def __main__():
 			del data[0]
 			while len(data) > 1 :
 				if ((int(data[0]) - int(options.bound)) <= 0) and ((int(data[2]) + int(options.bound)) >= dic_chr[scaff]):
-					mot = scaff+'=0='+str(dic_chr[scaff])
+					mot = scaff+':0:'+str(dic_chr[scaff])
 				elif ((int(data[0]) - int(options.bound)) <= 0):
-					mot = scaff+'=0='+str(int(data[2]) + int(options.bound))
+					mot = scaff+':0:'+str(int(data[2]) + int(options.bound))
 				elif((int(data[2]) + int(options.bound)) >= dic_chr[scaff]):
-					mot = scaff+'='+str(int(data[0]) - int(options.bound))+'='+str(dic_chr[scaff])
+					mot = scaff+':'+str(int(data[0]) - int(options.bound))+':'+str(dic_chr[scaff])
 				else:
-					mot = scaff+'='+str(int(data[0]) - int(options.bound))+'='+str(int(data[2]) + int(options.bound))
+					mot = scaff+':'+str(int(data[0]) - int(options.bound))+':'+str(int(data[2]) + int(options.bound))
 				nom = scaff+'-'+data[0]+'-'+data[2]+'.png'
 				liste_nom.append(nom)
 				del data[0]

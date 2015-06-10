@@ -297,20 +297,19 @@ def look4fusion(LOCA_PROGRAMS, CONFIG, BOUND, OUT_TEXT, OUT_TAR, PATHNAME):
 				tempo.close()
 				if liste_region:
 					if (BOUND*2) >= int(data[1]):
-						mot = data[0]+'=0='+str(int(data[1]))
+						mot = data[0]+':0:'+str(int(data[1]))
 					else:
-						mot = data[0]+'=0='+str(BOUND)
-						mot = mot+'='+data[0]+'='+str(int(data[1])-int(BOUND))+'='+str(int(data[1]))
+						mot = data[0]+':0:'+str(BOUND)
+						mot = mot+'-'+data[0]+':'+str(int(data[1])-int(BOUND))+':'+str(int(data[1]))
 					for n in liste_region:
 						if ((n[1] - BOUND) <= 0) and ((n[2] + BOUND) >= dic_chr[n[0]]):
-							mot = mot+'='+n[0]+'=0='+str(dic_chr[n[0]])
+							mot = mot+'-'+n[0]+':0:'+str(dic_chr[n[0]])
 						elif ((n[1] - BOUND) <= 0):
-							mot = mot+'='+n[0]+'=0='+str(n[2] + BOUND)
+							mot = mot+'-'+n[0]+':0:'+str(n[2] + BOUND)
 						elif((n[2] + BOUND) >= dic_chr[n[0]]):
-							mot = mot+'='+n[0]+'='+str(n[1] - BOUND)+'='+str(dic_chr[n[0]])
+							mot = mot+'-'+n[0]+':'+str(n[1] - BOUND)+':'+str(dic_chr[n[0]])
 						else:
-							mot = mot+'='+n[0]+'='+str(n[1] - BOUND)+'='+str(n[2] + BOUND)
-					# print mot
+							mot = mot+'-'+n[0]+':'+str(n[1] - BOUND)+':'+str(n[2] + BOUND)
 					liste_out.append(data[0]+'.png')
 					redraw = '%s %s/draw_circos.py --config %s --frf n --ff n --rr n --ins n --delet n --chr_rr n --chr_rf n --chr_fr n --chr_ff n --draw %s --out %s' % (LOCA_PROGRAMS.get('Programs','python'), PATHNAME, CONFIG, mot, data[0]+'.png')
 					run_job(redraw, 'Bug when drawing circos')
