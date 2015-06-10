@@ -56,6 +56,109 @@ def run_job (cmd_line, ERROR):
 	except Exception, e:
 		stop_err( ERROR + str( e ) )
 
+
+def extract_function_name():
+	"""Extracts failing function name from Traceback
+
+	by Alex Martelli
+	http://stackoverflow.com/questions/2380073/\
+	how-to-identify-what-function-call-raise-an-exception-in-python
+	"""
+	tb = sys.exc_info()[-1]
+	stk = traceback.extract_tb(tb, 1)
+	fname = stk[0][3]
+	return fname
+
+
+def zonesOverlap(zonesOrg, zonesCompList):
+	"""
+		Calculate the overlap of one couple of zone with all the zones of one accession.
+
+		:param zonesOrg: The mate zone to test.
+		:type zonesOrg: list
+		:param zonesCompList: The zones of one accession
+		:type zonesCompList: list
+		:return: A list with three boolean. first : indicate if the zoneOrg is overlapping one zone of zonesCompList; The second indicate if the overlapping zone is tagged as "PASSED" or not. The third indicate if the overlapping zone is tagged as "NOT_PASSED" or not.
+		:rtype: list
+	"""
+	i = 0
+	j = len(zonesCompList)
+	m = (i + j) // 2
+
+	overlap = False
+
+	amontChr = zonesOrg[0]
+	amontStart = int(zonesOrg[1])
+	amontEnd = int(zonesOrg[2])
+
+	avalChr = zonesOrg[3]
+	AvalStart = int(zonesOrg[4])
+	AvalEnd = int(zonesOrg[5])
+
+	while i < j and not overlap:
+
+		if zonesCompList[m][0] == amontChr:
+
+			if avalChr == zonesCompList[m][5]:
+
+				k = m
+				while k >= i and zonesCompList[k][0] == amontChr and zonesCompList[k][5] == avalChr:
+
+					if amontStart <= int(zonesCompList[k][2]) and amontEnd >= int(zonesCompList[k][1]) and AvalStart <= int(zonesCompList[k][7]) and AvalEnd >= int(zonesCompList[k][6]):
+						overlap = True
+					k -= 1
+
+				k = m + 1
+				while k < j and zonesCompList[k][0] == amontChr and zonesCompList[k][5] == avalChr:
+
+					if amontStart <= int(zonesCompList[k][2]) and amontEnd >= int(zonesCompList[k][1]) and AvalStart <= int(zonesCompList[k][7]) and AvalEnd >= int(zonesCompList[k][6]):
+						overlap = True
+					k += 1
+
+				# no infinite loop
+				if not overlap:
+					break
+
+			elif zonesCompList[m][5] < avalChr:
+				i = i + 1
+			else:
+				j = m
+
+		elif zonesCompList[m][0] < amontChr:
+			i = m + 1
+		else:
+			j = m
+
+		m = (i + j)//2
+
+	return [overlap]
+
+
+def readZonesToRemove(removedZones):
+	"""
+		Read from a file the zone to remove.
+
+		:param removedZones: path of a file containing the zones to remove.
+		:type removedZones: str:
+		:return: A list containing the zones.
+		:rtype: list
+	"""
+
+	zonesToRemove = []
+	try:
+		f = open(removedZones, 'r')
+	except Exception as e:
+		print ("There is an error :")
+		print ("\t"+extract_function_name())
+		print ("\t"+e.__doc__+" ("+e.message+" )\n")
+
+	for line in f:
+		if line.strip() and line[0] != '#':
+			cols = line.split()
+			zonesToRemove.append([cols[0], int(cols[1]), int(cols[2]), cols[5], int(cols[6]), int(cols[7])])
+	return zonesToRemove
+
+
 def convertFilter(filter, contrary = False):
 	if not contrary:
 		if filter == 'P' or filter == "PASSED":
@@ -138,7 +241,7 @@ def create_discord_link_org(FILE, OUT):
 	outfile.close()
 	return 0
 
-def create_discord_link(scoreFile, outFile, intervalNbAcc, filterZone, filterDraw):
+def create_discord_link(scoreFile, outFile, intervalNbAcc, filterZone, filterDraw, removedZones):
 	"""
 		Create a link file based on the discordant zones.
 
@@ -150,8 +253,13 @@ def create_discord_link(scoreFile, outFile, intervalNbAcc, filterZone, filterDra
 		:type nbAccessMin: int
 		:param filterZone: The filter used to compare couple of zones. (PASSED, NOT_PASSED or NEW_PASSED)
 		:type filterZone: str
+		:param removedZones: File containing a list of zones not to be considered.
+		:type removedZones: str
 		:return: void
 	"""
+
+	if removedZones:
+		zonesToRemove = readZonesToRemove(removedZones)
 
 	output = open(outFile, 'w')
 	input = open(scoreFile, 'r')
@@ -188,12 +296,24 @@ def create_discord_link(scoreFile, outFile, intervalNbAcc, filterZone, filterDra
 						if filterZone <= int(elmts[1]):  #Identical zones found in another accession
 							nbAccessionVal += 1
 				if nbAccessionVal >= intervalNbAcc[0] and nbAccessionVal <= intervalNbAcc[1]:
+
+					if removedZones:
+						if not zonesOverlap([cols[0], int(cols[1]), int(cols[2]), cols[5], int(cols[6]), int(cols[7])], zonesToRemove):
+							output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+										 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+						i += 1
+					else:
+						output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+									 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+			else:
+				if removedZones:
+						if not zonesOverlap([cols[0], int(cols[1]), int(cols[2]), cols[5], int(cols[6]), int(cols[7])], zonesToRemove):
+							output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+										 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+						i += 1
+				else:
 					output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
 								 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
-					i += 1
-			else:
-				output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
-							 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
 				i += 1
 
 	return 0
@@ -309,9 +429,12 @@ def calcul_couv_moy(covFile, chrFile, window, output):
 						coverage = 0.0
 						index = 0
 					i += 1
-				if index:
+				if index > 1:
 					covPerWin.append(coverage/float(index-1))
 					listWindows.append([chr, i-index, i, coverage/float(index)])
+					coverage = 0.0
+					index = 0
+				else:
 					coverage = 0.0
 					index = 0
 				i = 1
@@ -423,6 +546,7 @@ def __main__():
 	parser.add_option( '', '--nbaccess', dest='nbaccess', default='null', help='Draw only zone presents from n accessions, [default: %default]')
 	parser.add_option( '', '--filterzone', dest='filterzone', default='P', help='The filter to define a similar zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
 	parser.add_option( '', '--filterdraw', dest='filterdraw', default='P', help='The filter to draw zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
+	parser.add_option( '', '--removedZones', dest='removedZones', default='', help='File containing zones to remove.')
 
 	# For output
 	parser.add_option( '', '--prefix', dest='prefix', default='not_filled', help='Prefix for all output files. If this options is passed, all others output options are ignored, [default: %default]')
@@ -497,63 +621,63 @@ def __main__():
 			output = options.prefix+'_zone_frf.link'
 		else:
 			output = options.out_frf
-		listJobs.append(["create_discord_link", [options.frf, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.frf, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.ff != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_ff.link'
 		else:
 			output = options.out_ff
-		listJobs.append(["create_discord_link", [options.ff, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.ff, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.rr != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_rr.link'
 		else:
 			output = options.out_rr
-		listJobs.append(["create_discord_link", [options.rr, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.rr, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.ins != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_ins.link'
 		else:
 			output = options.out_ins
-		listJobs.append(["create_discord_link", [options.ins, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.ins, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.delet != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_delet.link'
 		else:
 			output = options.out_delet
-		listJobs.append(["create_discord_link", [options.delet, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.delet, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.chr_rr != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_chr_rr.link'
 		else:
 			output = options.out_chr_rr
-		listJobs.append(["create_discord_link", [options.chr_rr, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.chr_rr, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.chr_rf != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_chr_rf.link'
 		else:
 			output = options.out_chr_rf
-		listJobs.append(["create_discord_link", [options.chr_rf, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.chr_rf, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.chr_ff != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_chr_ff.link'
 		else:
 			output = options.out_chr_ff
-		listJobs.append(["create_discord_link", [options.chr_ff, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.chr_ff, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 	if options.chr_fr != 'not_filled':
 		if options.prefix != 'not_filled':
 			output = options.prefix+'_zone_chr_fr.link'
 		else:
 			output = options.out_chr_fr
-		listJobs.append(["create_discord_link", [options.chr_fr, output, options.nbaccess, options.filterzone, options.filterdraw]])
+		listJobs.append(["create_discord_link", [options.chr_fr, output, options.nbaccess, options.filterzone, options.filterdraw, options.removedZones]])
 
 
 	#For read link
@@ -773,8 +897,8 @@ def __main__():
 			config.add_section('Coverage')
 			config.set('Coverage','cov', os.path.abspath(options.out_cov))
 			config.set('General','cov', 'yes')
-			config.set('Coverage','median_cov', str(Value[0]))
-			config.set('Coverage','mean_cov', str(Value[1]))
+			config.set('Coverage','median_cov', str(median_cov))
+			config.set('Coverage','mean_cov', str(mean_cov))
 		else:
 			config.set('General','cov', 'no')
 		config.add_section('Discord_link')

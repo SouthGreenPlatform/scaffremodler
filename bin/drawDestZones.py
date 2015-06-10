@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 #
 #  Copyright 2014 CIRAD
 #
@@ -20,7 +20,6 @@
 #
 #
 
-# -*- coding: utf-8 -*-
 import ConfigParser
 import datetime
 import optparse
