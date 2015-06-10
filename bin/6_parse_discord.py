@@ -782,5 +782,5 @@ def __main__():
 		calcul_discord_prop_and_parse(loca_programs, options.chr, options.sam, options.liste_type, options.out_ins, options.out_del, options.out_fr, options.out_rf, options.out_ff, options.out_rr, options.out_chr_fr, options.out_chr_rf, options.out_chr_ff, options.out_chr_rr, options.out_discarded, options.discord_prop, options.orient, options.exclude_chrom)
 		if options.rminput == 'y':
 			os.remove(options.sam)
-	os.remove(options.list_type+".filtered")
+	os.remove(options.liste_type+".filtered")
 if __name__ == "__main__": __main__()
