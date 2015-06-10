@@ -1359,6 +1359,6 @@ def __main__():
 	logOutput.write("\ntotal time : "+str(datetime.datetime.now() - t_start))
 	logOutput.close()
 	if os.path.exists(options.sam+".bai"):
-		os.remove(otpions.sam+".bai")
+		os.remove(options.sam+".bai")
 	os.remove(logNameFile)
 if __name__ == "__main__": __main__()
