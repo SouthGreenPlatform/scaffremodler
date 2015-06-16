@@ -145,7 +145,7 @@ def __main__():
 	if nbProcs > multiprocessing.cpu_count():
 		sys.exit("Processors number to high.\nYou have only "+str(multiprocessing.cpu_count())+" processor(s) available on this computer.")
 
-	pathname = os.path.dirname(sys.argv[0])
+	pathname = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 	loca_programs = ConfigParser.RawConfigParser()
 	loca_programs.read(pathname+'/loca_programs.conf')
