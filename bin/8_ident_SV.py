@@ -720,7 +720,6 @@ def main(job):
 	return 0
 
 def worker(job):
-	print job
 	try:
 		codeError = main(job)
 	except Exception as e:
@@ -834,10 +833,6 @@ def __main__():
 	pool = mp.Pool(processes=proc)
 	resultsJobs = pool.map(worker, listJobs)
 	
-	for rslt in resultsJobs:
-		print rslt
-			
-
 	with open(options.out, 'w') as outfile:		
 		for fname in oufileNames:
 			if os.path.isfile(fname):
@@ -889,27 +884,6 @@ def __main__():
 	pool = multiprocessing.Pool(processes=proc)
 	resultsJobs = pool.map(worker, liste_id)
 	
-	# for n in liste_id:
-		# t = multiprocessing.Process(target=run_job, args=(n, 'Bug lauching indent_SV.py',))
-		# liste_process.append(t)
-		# if len(liste_process) == proc:
-			# # Starts threads
-			# for process in liste_process:
-				# process.start()
-			# # This blocks the calling thread until the thread whose join() method is called is terminated.
-			# for process in liste_process:
-				# process.join()
-			# #the processes are done
-			# liste_process = []
-	# if liste_process:
-		# # Starts threads
-		# for process in liste_process:
-			# process.start()
-		# # This blocks the calling thread until the thread whose join() method is called is terminated.
-		# for process in liste_process:
-			# process.join()
-		# #the processes are done
-		# liste_process = []
 	
 	if options.config:
 		config = ConfigParser.RawConfigParser()
@@ -925,9 +899,6 @@ def __main__():
 		config.set('Ident_discord','chr_ff', options.chr_ff)
 		with open(options.config, 'wb') as configfile:
 			config.write(configfile)
-	# for n in liste_job:
-		# cherche_error('IDENT_SV.o'+n)
-		# os.system('rm IDENT_SV.o'+n)
 	mot = 'cat '
 	for n in liste_tmp:
 		mot = mot + n + ' '
