@@ -32,7 +32,6 @@ def run_job (cmd_line, ERROR):
 	sys.stdout.flush()
 	try:
 		tmp = tempfile.NamedTemporaryFile().name
-		print tmp
 		error = open(tmp, 'w')
 		proc = subprocess.Popen( args=cmd_line, shell=True, stderr=error)
 		returncode = proc.wait()
@@ -309,7 +308,7 @@ def __main__():
 			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_fr.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
 			run_job( scoring, 'bug')
 		elif options.orient == 'fr':
-			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_rf.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
+			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_rf.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --orient fr --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
 			run_job( scoring, 'bug')
 		else:
 			mot = 'Unrecognized argument in --orient option: '+options.orient

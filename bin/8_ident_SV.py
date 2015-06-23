@@ -34,15 +34,15 @@ import random
 import datetime
 import ctypes
 import multiprocessing as mp
-from multiprocessing.sharedctypes import Value, Array 
+from multiprocessing.sharedctypes import Value, Array
 
 # Global variables
 covChr = {}  # contains the coverture of each site by chromosome
 
 
 def stop_err( msg ):
-    sys.stderr.write( "%s\n" % msg )
-    sys.exit()
+	sys.stderr.write( "%s\n" % msg )
+	sys.exit()
 
 
 def run_job (cmd_line, ERROR):
@@ -85,7 +85,7 @@ def readChrLenght(chrFile):
 	f.close()
 	return chrSize
 
-	
+
 def readCov(chrFile, covFile):
 	"""
 		fill a global dict with the coverage of the chromosome for each site
@@ -106,8 +106,8 @@ def readCov(chrFile, covFile):
 				test[int(cols[1])-1] = int(cols[2])
 	covChr[chr] = test
 
-	
-def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT, OUT, EXP_COV, PLOID, TYPE):
+
+def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT, OUT, EXP_COV, PLOID, ORIENT, TYPE):
 	outfile = open(OUT,'w')
 	file = open(FF)
 	dic_FF = {}
@@ -121,7 +121,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_FF[data[0]] = ([])
 					dic_FF[data[0]].append([int(data[1]), int(data[2]), data[5], int(data[6]), int(data[7])])
 	file.close()
-	
+
 	file = open(FR)
 	dic_FR = {}
 	for line in file:
@@ -134,7 +134,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_FR[data[0]] = ([])
 					dic_FR[data[0]].append([int(data[1]), int(data[2]), data[5], int(data[6]), int(data[7])])
 	file.close()
-	
+
 	file = open(RR)
 	dic_RR = {}
 	for line in file:
@@ -147,7 +147,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_RR[data[0]] = ([])
 					dic_RR[data[0]].append([int(data[1]), int(data[2]), data[5], int(data[6]), int(data[7])])
 	file.close()
-	
+
 	file = open(INS)
 	dic_INS = {}
 	for line in file:
@@ -160,7 +160,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_INS[data[0]] = ([])
 					dic_INS[data[0]].append([int(data[1]), int(data[2]), data[5], int(data[6]), int(data[7])])
 	file.close()
-	
+
 	file = open(DEL)
 	dic_DEL = {}
 	for line in file:
@@ -173,7 +173,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_DEL[data[0]] = ([])
 					dic_DEL[data[0]].append([int(data[1]), int(data[2]), data[5], int(data[6]), int(data[7])])
 	file.close()
-	
+
 	file = open(CHR_rr)
 	dic_CHR_rr = {}
 	dic_CHR_rr_rev = {}
@@ -192,8 +192,8 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_CHR_rr_rev[data[5]] = ([])
 					dic_CHR_rr_rev[data[5]].append([int(data[6]), int(data[7]), data[0], int(data[1]), int(data[2])])
 	file.close()
-	
-	
+
+
 	file = open(CHR_rf)
 	dic_CHR_rf = {}
 	dic_CHR_rf_rev = {}
@@ -212,7 +212,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_CHR_rf_rev[data[5]] = ([])
 					dic_CHR_rf_rev[data[5]].append([int(data[6]), int(data[7]), data[0], int(data[1]), int(data[2])])
 	file.close()
-	
+
 	file = open(CHR_fr)
 	dic_CHR_fr = {}
 	dic_CHR_fr_rev = {}
@@ -231,7 +231,7 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 					dic_CHR_fr_rev[data[5]] = ([])
 					dic_CHR_fr_rev[data[5]].append([int(data[6]), int(data[7]), data[0], int(data[1]), int(data[2])])
 	file.close()
-	
+
 	file = open(CHR_ff)
 	dic_CHR_ff = {}
 	dic_CHR_ff_rev = {}
@@ -661,6 +661,44 @@ def indent_discord(FF, FR, RR, INS, DEL, CHR_rr, CHR_fr, CHR_rf, CHR_ff, INSERT,
 														outfile.write('reciprocal_translocation\tregion1_inv:\t'+n+'\t'+str(pos1[0])+'\t'+str(pos5[1])+'\tregion2:\t'+j[2]+'\t'+str(pos8[0])+'\t'+str(pos4[1])+'\n')
 													elif pos2[1] <= pos1[0] + vasouille:#second fragment inversed
 														outfile.write('reciprocal_translocation\tregion1:\t'+n+'\t'+str(pos2[0])+'\t'+str(pos7[1])+'\tregion2_inv:\t'+j[2]+'\t'+str(pos3[0])+'\t'+str(pos6[1])+'\n')
+	# Transclocation reciproque impliquant les extremites de chromosomes
+	overlap = 100
+	if TYPE == 'a':
+		for chrom in dic_CHR_rf:
+			for zoneRF in dic_CHR_rf[chrom]:
+				if chrom in dic_CHR_fr:
+					for zoneFR in dic_CHR_fr[chrom]:
+						if zoneRF[2] == zoneFR[2]:
+							if ORIENT == 'rf':
+								if zoneRF[1] - zoneFR[0] <= overlap and \
+								zoneFR[0] - zoneRF[1] <= 2*INSERT and \
+								zoneFR[4] - zoneRF[3] <= overlap and \
+								zoneRF[3] - zoneFR[4] <= 2*INSERT:
+									outfile.write('reciprocal_translocation (extremity)\tregion1:\t'+chrom+'\t'+str(zoneRF[0])+'\t'+str(zoneFR[1])+'\tregion2:\t'+zoneRF[2]+'\t'+str(zoneFR[3])+'\t'+str(zoneRF[4])+'\n')
+							else:
+								if zoneFR[1] - zoneRF[0] <= overlap and \
+								zoneRF[0] - zoneFR[1] <= 2*INSERT and \
+								zoneRF[4] - zoneFR[3] <= overlap and \
+								zoneFR[3] - zoneRF[4] <= 2*INSERT:
+									outfile.write('reciprocal_translocation (extremity)\tregion1:\t'+chrom+'\t'+str(zoneFR[0])+'\t'+str(zoneRF[1])+'\tregion2:\t'+zoneRF[2]+'\t'+str(zoneRF[3])+'\t'+str(zoneFR[4])+'\n')
+	if TYPE == 'b':
+		for chrom in dic_CHR_rr:
+			for zoneRR in dic_CHR_rr[chrom]:
+				if chrom in dic_CHR_ff:
+					for zoneFF in dic_CHR_ff[chrom]:
+						if zoneRR[2] == zoneFF[2]:
+							if ORIENT == 'rf':
+								if zoneRR[1] - zoneFF[0] <= overlap and \
+								zoneFF[0] - zoneRR[1] <= 2*INSERT and \
+								zoneRR[4] - zoneFF[3] <= overlap and \
+								zoneFF[3] - zoneRR[4] <= 2*INSERT:
+									outfile.write ('reciprocal_translocation (extremity)\tregion1:\t'+chrom+'\t'+str(zoneRR[1])+'\t'+str(zoneFF[0])+'\tregion2:\t'+zoneRR[2]+'\t'+str(zoneRR[4])+'\t'+str(zoneFF[3])+'\n')
+							else:
+								if zoneFF[1] - zoneRR[0] <= overlap and \
+								zoneRR[0] - zoneFF[1] <= 2*INSERT and \
+								zoneFF[4] - zoneRR[3] <= overlap and \
+								zoneRR[3] - zoneFF[4] <= 2*INSERT:
+									outfile.write ('reciprocal_translocation (extremity)\tregion1:\t'+chrom+'\t'+str(zoneFF[1])+'\t'+str(zoneRR[0])+'\tregion2:\t'+zoneFF[2]+'\t'+str(zoneFF[4])+'\t'+str(zoneRR[3])+'\n')
 	outfile.close()
 
 
@@ -681,7 +719,7 @@ def couv_med_reg(deb, fin, chr):
 		return 0
 	else:
 		return mediane(subListNoGap)
-		
+
 
 def couv_med_reg_del(deb, fin, chr):
 	"""
@@ -693,14 +731,17 @@ def couv_med_reg_del(deb, fin, chr):
 		:type end: int
 	"""
 	subListNoGap = []
-	for site in covChr[chr][deb-1:fin]:
-		if site:
-			subListNoGap.append(site)
-	if len(subListNoGap) <= 0.5*(fin-deb):
-		return 0
+	if deb < fin:
+		for site in covChr[chr][deb-1:fin]:
+			if site:
+				subListNoGap.append(site)
+		if len(subListNoGap) <= 0.5*(fin-deb):
+			return 0
+		else:
+			return mediane(subListNoGap)
 	else:
-		return mediane(subListNoGap)
-		
+		return 0
+
 
 def mediane(LISTE):
 	L = sorted(LISTE)
@@ -715,20 +756,20 @@ def mediane(LISTE):
 		return L[p]
 
 
-def main(job):
-	indent_discord(job[0]['ff'], job[0]['frf'], job[0]['rr'], job[0]['ins'], job[0]['delet'], job[0]['chr_rr'], job[0]['chr_fr'], job[0]['chr_rf'], job[0]['chr_ff'], job[0]['insert'], job[1], job[0]['medCoverage'], job[0]['ploid'], job[2])
-	return 0
-
 def worker(job):
+	codeError = 0
 	try:
-		codeError = main(job)
+		indent_discord(job[0]['ff'], job[0]['frf'], job[0]['rr'], job[0]['ins'], job[0]['delet'], job[0]['chr_rr'], job[0]['chr_fr'], job[0]['chr_rf'], job[0]['chr_ff'], job[0]['insert'], job[1], job[0]['medCoverage'], job[0]['ploid'], job[0]['orient'], job[2])
 	except Exception as e:
 		print e
+		print(type(e))
+		print(e.args)
+		print ("\t"+e.__doc__+" ("+e.message+" )\n")
 		codeError = 1
 	finally:
 		return codeError
-		
-		
+
+
 def __main__():
 	#Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Guillaume MARTIN : guillaume.martin@cirad.fr\n\n"
@@ -754,13 +795,13 @@ def __main__():
 	parser.add_option( '', '--out', dest='out', default='SV_detected.tab', help='Output file')
 	parser.add_option( '', '--config', dest='config', default=None)
 	(options, args) = parser.parse_args()
-	
+
 	proc = int(options.thread)
-	
+
 	pathname = os.path.dirname(sys.argv[0])
 	loca_programs = ConfigParser.RawConfigParser()
 	loca_programs.read(pathname+'/loca_programs.conf')
-	
+
 	if options.frf == 'not_filled':
 		sys.exit('Please provide an argument for --frf')
 	if options.ff == 'not_filled':
@@ -781,23 +822,23 @@ def __main__():
 		sys.exit('Please provide an argument for --chr_rr')
 	if options.out == 'not_filled':
 		sys.exit('Please provide an argument for --out')
-		
+
 	if not options.config:
 		if options.exp_cov == 'not_filled':
 			sys.exit('Please provide an argument for --exp_cov')
 		if options.covf == 'not_filled':
 			sys.exit('Please provide an argument for --covf')
-		
+
 	args = {}
 	if options.orient == 'rf':
 		args['ff'] = options.ff
 		args['rr'] = options.rr
 	elif options.orient == 'fr':
-		args['ff'] = options.rr 
+		args['ff'] = options.rr
 		args['rr'] = options.ff
 	else:
 		raise ValueError("Unrecognised orientation")
-		
+
 	if options.config:
 		config = ConfigParser.RawConfigParser()
 		config.read(options.config)
@@ -819,8 +860,9 @@ def __main__():
 	args['chr_ff'] = options.chr_ff
 	args['ins'] = options.ins
 	args['delet'] = options.delet
-	
-	
+	args['orient'] = options.orient
+
+
 	listJobs = []
 	oufileNames = []
 	for i in range(len(options.type)):
@@ -829,11 +871,11 @@ def __main__():
 		oufileNames.append(outfile)
 
 	readCov(args['chrFile'], args['covFile'])
-	
+
 	pool = mp.Pool(processes=proc)
 	resultsJobs = pool.map(worker, listJobs)
-	
-	with open(options.out, 'w') as outfile:		
+
+	with open(options.out, 'w') as outfile:
 		for fname in oufileNames:
 			if os.path.isfile(fname):
 				with open(fname) as infile:
@@ -856,55 +898,7 @@ def __main__():
 		config.set('Ident_discord','chr_rf', options.chr_rf)
 		config.set('Ident_discord','chr_ff', options.chr_ff)
 		with open(options.config, 'wb') as configfile:
-			config.write(configfile)		
-	
-	sys.exit()
-	i = 0
-	liste_tmp = []
-	liste_id = []
-	listeJobs = []
-	# liste_job = []
-	while i < 10:
-		temp = options.out+'_'+str(i)
-		liste_tmp.append(temp)
-		# print temp
-		if options.config:
-			# liste_id.append("%s %s/ident_SV.py --frf %s --ff %s --rr %s --ins %s --delet %s --chr_rr %s --chr_fr %s --chr_rf %s --chr_ff %s --chr %s --covf %s --orient %s --insert %s --exp_cov %s --ploid %s --out %s --config %s --type %s" % (loca_programs.get('Programs','python'), ScriptPath, options.frf, options.ff, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, options.chr, options.covf, options.orient, options.insert, options.exp_cov, options.ploid, temp, options.config, str(i)))
-			args = [ScriptPath, options.frf, options.ff, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, options.chr, options.covf, options.orient, options.insert, options.exp_cov, options.ploid, temp, options.config, str(i)]
-			type = str(i)
-			listeJobs.append(args)
-		else:
-			# liste_id.append("%s %s/ident_SV.py --frf %s --ff %s --rr %s --ins %s --delet %s --chr_rr %s --chr_fr %s --chr_rf %s --chr_ff %s --chr %s --covf %s --orient %s --insert %s --exp_cov %s --ploid %s --out %s --type %s" % (loca_programs.get('Programs','python'), ScriptPath, options.frf, options.ff, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, options.chr, options.covf, options.orient, options.insert, options.exp_cov, options.ploid, temp, str(i)))
-			args = [ScriptPath, options.frf, options.ff, options.rr, options.ins, options.delet, options.chr_rr, options.chr_fr, options.chr_rf, options.chr_ff, options.chr, options.covf, options.orient, options.insert, options.exp_cov, options.ploid, temp, str(i)]
-			listeJobs.append(args)
-		i += 1
-	
-	liste_process = []
-	
-	pool = multiprocessing.Pool(processes=proc)
-	resultsJobs = pool.map(worker, liste_id)
-	
-	
-	if options.config:
-		config = ConfigParser.RawConfigParser()
-		config.read(options.config)
-		config.set('Ident_discord','frf', options.frf)
-		config.set('Ident_discord','ff', options.ff)
-		config.set('Ident_discord','rr', options.rr)
-		config.set('Ident_discord','ins', options.ins)
-		config.set('Ident_discord','delet', options.delet)
-		config.set('Ident_discord','chr_rr', options.chr_rr)
-		config.set('Ident_discord','chr_fr', options.chr_fr)
-		config.set('Ident_discord','chr_rf', options.chr_rf)
-		config.set('Ident_discord','chr_ff', options.chr_ff)
-		with open(options.config, 'wb') as configfile:
 			config.write(configfile)
-	mot = 'cat '
-	for n in liste_tmp:
-		mot = mot + n + ' '
-	mot = mot + '> ' + options.out
-	os.system(mot)
-	for n in liste_tmp:
-		os.remove(n)
-		
+
+
 if __name__ == "__main__": __main__()
