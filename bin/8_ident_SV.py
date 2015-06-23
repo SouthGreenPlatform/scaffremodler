@@ -790,7 +790,7 @@ def __main__():
 	parser.add_option( '', '--insert', dest='insert', default=5000, help='The expected insert size, [default: %default]')
 	parser.add_option( '', '--exp_cov', dest='exp_cov', default='not_filled', help='The expected coverage (float)')
 	parser.add_option( '', '--ploid', dest='ploid', default=0.33, help='Multiplicator for coverage variation detection in SV identification (ex : If homozygous duplication expected in diploid: expected = coverage + coverage*1, if heterozygous duplication expected in diploid: expected = coverage + coverage*0.5). Choose a value lower than the expected one')
-	parser.add_option( '', '--type', dest='type', default='0123456789', help='The type of SV searched: q')
+	parser.add_option( '', '--type', dest='type', default='0123456789ab', help='The type of SV searched: q')
 	parser.add_option( '', '--thread', dest='thread', default='1', help='The thread number used for search (integer), [default: %default]')
 	parser.add_option( '', '--out', dest='out', default='SV_detected.tab', help='Output file')
 	parser.add_option( '', '--config', dest='config', default=None)
