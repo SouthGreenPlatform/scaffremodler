@@ -221,9 +221,9 @@ def create_kar(REF, CHR, OUT_KAR, OUT_N):
 			debut = 0
 			sur_N = 0
 			if sequence[0] == 'N' or sequence[0] == 'n':
-				sys.exit('the program cannot work because sequence '+data[0]+' begins with N')
+				raise ValueError('the program cannot work because sequence '+data[0]+' begins with N')
 			elif sequence[-1] == 'N' or sequence[-1] == 'n':
-				sys.exit('the program cannot work because sequence '+data[0]+' ends with N')
+				raise ValueError('the program cannot work because sequence '+data[0]+' ends with N')
 			out2.write(data[0]+'\t'+str(pos+1)+'\t'+str(pos+1)+'\t'+data[0]+'-'+str(pos+1)+'-'+'p\n')
 			for n in sequence:
 				if n == 'N' or n == 'n':
@@ -252,12 +252,14 @@ def create_discord_link_org(FILE, OUT):
 			if data[0][0] != "#":
 				if data[13] == 'PASSED':
 					if i == 1:
-						outfile.write('link'+str(i)+' '+data[0]+' '+data[1]+' '+data[2]+'\n')
-						outfile.write('link'+str(i)+' '+data[5]+' '+data[6]+' '+data[7])
+						# outfile.write('link'+str(i)+' '+data[0]+' '+data[1]+' '+data[2]+'\n')
+						# outfile.write('link'+str(i)+' '+data[5]+' '+data[6]+' '+data[7])
+						outfile.write(data[0]+' '+data[1]+' '+data[2]+' '+data[5]+' '+data[6]+' '+data[7]+'\n')
 						i = i + 1
 					else:
-						outfile.write('\nlink'+str(i)+' '+data[0]+' '+data[1]+' '+data[2])
-						outfile.write('\nlink'+str(i)+' '+data[5]+' '+data[6]+' '+data[7])
+						# outfile.write('\nlink'+str(i)+' '+data[0]+' '+data[1]+' '+data[2])
+						# outfile.write('\nlink'+str(i)+' '+data[5]+' '+data[6]+' '+data[7])
+						outfile.write(data[0]+' '+data[1]+' '+data[2]+' '+data[5]+' '+data[6]+' '+data[7]+'\n')
 						i = i + 1
 	outfile.close()
 	return 0
@@ -320,23 +322,39 @@ def create_discord_link(scoreFile, outFile, intervalNbAcc, filterZone, filterDra
 
 					if removedZones:
 						if not zonesOverlap([cols[0], int(cols[1]), int(cols[2]), cols[5], int(cols[6]), int(cols[7])], zonesToRemove):
-							output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
-										 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+							# output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+							# 			 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+							output.write(cols[0]+' '+cols[1]+' '+cols[2]+' '+cols[5]+' '+cols[6]+' '+cols[7]+ \
+							' url=chr1='+cols[0]+'/start1='+cols[1]+'/end1='+cols[2]+'/size1='+cols[3]+'/cov1='+cols[4]+\
+							'/chr2='+cols[5]+'/start2='+cols[6]+'/end2='+cols[7]+'/size2='+cols[8]+'/cov2='+cols[9]+\
+							'/reads='+cols[11]+'/misc='+cols[10]+'\n')
 						i += 1
 					else:
-						output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
-									 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+						# output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+						# 			 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+						output.write(cols[0]+' '+cols[1]+' '+cols[2]+' '+cols[5]+' '+cols[6]+' '+cols[7]+ \
+						' url=chr1='+cols[0]+'/start1='+cols[1]+'/end1='+cols[2]+'/size1='+cols[3]+'/cov1='+cols[4]+\
+						'/chr2='+cols[5]+'/start2='+cols[6]+'/end2='+cols[7]+'/size2='+cols[8]+'/cov2='+cols[9]+\
+						'/reads='+cols[11]+'/misc='+cols[10]+'\n')
 			else:
 				if removedZones:
 						overlapfound = zonesOverlap([cols[0], int(cols[1]), int(cols[2]), cols[5], int(cols[6]), int(cols[7])], zonesToRemove)
 
 						if not overlapfound[0]:
-							output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
-										 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+							# output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+							# 			 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+							output.write(cols[0]+' '+cols[1]+' '+cols[2]+' '+cols[5]+' '+cols[6]+' '+cols[7]+ \
+							' url=chr1='+cols[0]+'/start1='+cols[1]+'/end1='+cols[2]+'/size1='+cols[3]+'/cov1='+cols[4]+\
+							'/chr2='+cols[5]+'/start2='+cols[6]+'/end2='+cols[7]+'/size2='+cols[8]+'/cov2='+cols[9]+\
+							'/reads='+cols[11]+'/misc='+cols[10]+'\n')
 						i += 1
 				else:
-					output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
-								 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+					# output.write("link"+str(i)+' '+cols[0]+' '+cols[1]+' '+cols[2]+"\
+					# 			 \nlink"+str(i)+' '+cols[5]+' '+cols[6]+' '+cols[7]+'\n')
+					output.write(cols[0]+' '+cols[1]+' '+cols[2]+' '+cols[5]+' '+cols[6]+' '+cols[7]+ \
+					' url=chr1='+cols[0]+'/start1='+cols[1]+'/end1='+cols[2]+'/size1='+cols[3]+'/cov1='+cols[4]+\
+					'/chr2='+cols[5]+'/start2='+cols[6]+'/end2='+cols[7]+'/size2='+cols[8]+'/cov2='+cols[9]+\
+					'/reads='+cols[11]+'/misc='+cols[10]+'\n')
 				i += 1
 
 	return 0
@@ -355,13 +373,15 @@ def create_read_link(FILE, OUT, TYPE):
 		if data:
 			if data[5] == 'discard':
 				if data[6] == TYPE:
-					outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+\
-								  '\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
+					# outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+\
+					# 			  '\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
+					outfile.write(data[3]+' '+data[1]+' '+data[1]+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
 					i = i + 1
 			else:
 				if data[5] == TYPE:
-					outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+\
-								  '\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
+					# outfile.write('link'+str(i)+' '+data[3]+' '+data[1]+' '+data[1]+\
+					# 			  '\nlink'+str(i)+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
+					outfile.write(data[3]+' '+data[1]+' '+data[1]+' '+data[4]+' '+data[2]+' '+data[2]+'\n')
 					i = i + 1
 	outfile.close()
 	return 0
@@ -385,6 +405,7 @@ def moyenne(L):
 	if len(L) == 0:
 		moyenne = 0
 	else:
+		print float(len(L))
 		moyenne = sum(L)/float(len(L))
 	return moyenne
 
@@ -405,6 +426,7 @@ def calcul_couv_moy(covFile, chrFile, window, output):
 	chr = ""
 	coverage = 0.0
 	index = 0
+	window = int(window)
 	f = open(covFile, 'r')
 	for line in f:
 		if line.strip():
@@ -452,9 +474,13 @@ def calcul_couv_moy(covFile, chrFile, window, output):
 						coverage = 0.0
 						index = 0
 					i += 1
-				if index:
+				if index > 1:
+					print ('index restant 1 :'+str(index))
 					covPerWin.append(coverage/float(index-1))
 					listWindows.append([chr, i-index, i, coverage/float(index)])
+					coverage = 0.0
+					index = 0
+				else:
 					coverage = 0.0
 					index = 0
 				i = 1
@@ -476,6 +502,29 @@ def calcul_couv_moy(covFile, chrFile, window, output):
 					index = 0
 				chr = cols[0]
 	f.close()
+
+	# try:
+	# 	med = mediane(covPerWin)
+	# except Exception as e:
+	# 	print ('oups1')
+	# 	print e
+	# 	sys.stdout.flush()
+	# 	raise ValueError('Error in mediane()')
+	#
+	# listCov = []
+	# out = open(output, 'w')
+	# for window in listWindows:
+	# 	out.write(window[0]+'\t'+str(window[1])+'\t'+str(window[2]-1)+'\t'+str(window[3] - med)+'\n')
+	# 	listCov.append(window[3] - med)
+	# out.close()
+	#
+	# try:
+	# 	med = moyenne(listCov)
+	# except Exception as e:
+	# 	print ('oups2')
+	# 	print e
+	# 	sys.stdout.flush()
+	# 	raise ValueError('Error in moyenne()')
 	med = mediane(covPerWin)
 
 	listCov = []
@@ -484,6 +533,8 @@ def calcul_couv_moy(covFile, chrFile, window, output):
 		out.write(window[0]+'\t'+str(window[1])+'\t'+str(window[2]-1)+'\t'+str(window[3] - med)+'\n')
 		listCov.append(window[3] - med)
 	out.close()
+
+	return [med, moyenne(listCov)]
 
 	return [med, moyenne(listCov)]
 
@@ -508,6 +559,7 @@ def create_tile(FILE, OUT):
 
 def worker(job):
 	codeError = 0
+	rslt = 0
 	try:
 		if job[0] == "create_kar":
 			rslt = create_kar(*job[1])
@@ -519,6 +571,8 @@ def worker(job):
 			rslt = create_read_link(*job[1])
 		elif job[0] == "create_tile":
 			rslt = create_tile(*job[1])
+		elif job[0] == "create_housekeeping":
+			rslt = create_housekeeping(*job[1])
 		else:
 			codeError = 1
 			rslt = 0
@@ -529,6 +583,93 @@ def worker(job):
 		codeError = 1
 	finally:
 		return [codeError, rslt, job[0], job[1]]
+
+
+def create_housekeeping(fileName):
+
+	"""
+		Create the housekepping.conf file (needed if many point are drawn)
+
+		:param PREFIX: Prefix of the output file.
+		:type PREFIX: str
+		:return: the housekeeping.conf file
+		:rtype: void
+	"""
+
+	outfile = open(fileName,'w')
+	outfile.write('anglestep       = 0.5\n')
+	outfile.write('minslicestep    = 10\n')
+	outfile.write('beziersamples   = 40\n')
+	outfile.write('debug           = no\n')
+	outfile.write('warnings        = no\n')
+	outfile.write('imagemap        = no\n')
+	outfile.write('paranoid        = yes\n')
+	outfile.write('units_ok        = bupr\n')
+	outfile.write('units_nounit    = n\n')
+	outfile.write('file_delim = \s\n')
+	outfile.write('file_delim_collapse = yes\n')
+	outfile.write('list_record_delim = \s*[;,]\s*\n')
+	outfile.write('list_field_delim  = \s*[:=]\s*\n')
+	outfile.write('options_record_delim = [,;]\n')
+	outfile.write('options_field_delim  = =\n')
+	outfile.write('skip_missing_expression_vars = no\n')
+	outfile.write('legacy_underline_expression_syntax = no\n')
+	outfile.write('svg_font_scale = 1.3\n')
+	outfile.write('sup_baseline_shift = 40\n')
+	outfile.write('sub_baseline_shift = -40\n')
+	outfile.write('sup_fontsize = 90\n')
+	outfile.write('sub_fontsize = 90\n')
+	outfile.write('default_font   = default\n')
+	outfile.write('default_font_name  = Arial\n')
+	outfile.write('default_font_color = black\n')
+	outfile.write('default_color  = black\n')
+	outfile.write('<guides>\n')
+	outfile.write('thickness      = 1\n')
+	outfile.write('size           = 5\n')
+	outfile.write('type           = outline\n')
+	outfile.write('<object>\n')
+	outfile.write('all            = no\n')
+	outfile.write('ideogram       = no\n')
+	outfile.write('ideogram_label = no\n')
+	outfile.write('</object>\n')
+	outfile.write('<color>\n')
+	outfile.write('default = lblue\n')
+	outfile.write('text    = red\n')
+	outfile.write('</color>\n')
+	outfile.write('</guides>\n')
+	outfile.write('debug_group = summary,output\n')
+	outfile.write('debug_auto_timer_report = 30\n')
+	outfile.write('debug_word_separator = " "\n')
+	outfile.write('debug_undef_text     = _undef_\n')
+	outfile.write('debug_empty_text     = _emptylist_\n')
+	outfile.write('debug_validate       = yes\n')
+	outfile.write('debug_output_tidy    = no\n')
+	outfile.write('text_pixel_subsampling = 1\n')
+	outfile.write('text_snuggle_method    = array\n')
+	outfile.write('restrict_parameter_names = no\n')
+	outfile.write('case_sensitive_parameter_names = no\n')
+	outfile.write('calculate_track_statistics = yes\n')
+	outfile.write('color_cache_static = yes\n')
+	outfile.write('color_cache_file   = circos.colorlist\n')
+	outfile.write('color_lists_use    = yes\n')
+	outfile.write('memoize = yes\n')
+	outfile.write('quit_on_dump = yes\n')
+	outfile.write('offsets = 0,0\n')
+	outfile.write('max_ticks            = 5000\n')
+	outfile.write('max_ideograms        = 200\n')
+	outfile.write('max_links            = 1000000\n')
+	outfile.write('max_points_per_track = 1000000\n')
+	outfile.write('undefined_ideogram = skip\n')
+	outfile.write('relative_scale_iterations = 10\n')
+	outfile.write('relative_scale_spacing    = mode\n')
+	outfile.write('data_out_of_range = trim,warn #\n')
+	outfile.write('track_defaults = etc/tracks\n')
+	outfile.write('round_brush_use           = yes\n')
+	outfile.write('round_brush_min_thickness = 5\n')
+	outfile.write('anti_aliasing = yes\n')
+	outfile.write('housekeeping = yes\n')
+	outfile.write('auto_eval = no\n')
+	outfile.close()
 
 
 def __main__():
@@ -574,6 +715,7 @@ def __main__():
 	# If no prefix arguments are passed
 	parser.add_option( '', '--out_kar', dest='out_kar', default='circos_karyotype.txt', help='Karyotype output file, [default: %default]')
 	parser.add_option( '', '--out_N', dest='out_N', default='circos_loc_N.txt', help='File name of text file locating N, [default: %default]')
+	parser.add_option( '', '--out_H', dest='out_H', default='circos_housekeeping.txt', help='File name of housekeeping file, [default: %default]')
 
 	parser.add_option( '', '--out_cov', dest='out_cov', default='circos_mean.cov', help='Mean coverage output file, [default: %default]')
 
@@ -620,10 +762,14 @@ def __main__():
 	if options.prefix != 'not_filled':
 		output1 = options.prefix+'_karyotype.txt'
 		output2 = options.prefix+'_loc_N.txt'
+		hkFile = options.prefix+'_housekeeping.conf'
 	else:
 		output1 = options.out_kar
 		output2 = options.out_N
+		hkFile = options.out_H
+
 	listJobs.append(["create_kar", [options.ref, options.chr, output1, output2]])
+	listJobs.append(["create_housekeeping", [hkFile]])
 
 	if options.cov != 'not_filled':
 		if options.window == 'not_filled':
@@ -828,6 +974,7 @@ def __main__():
 		config.set('General','chr', os.path.abspath(options.chr))
 		config.set('General','out_kar', os.path.abspath(options.prefix+'_karyotype.txt'))
 		config.set('General','out_N', os.path.abspath(options.prefix+'_loc_N.txt'))
+		config.set('General','out_housekeeping', os.path.abspath(options.prefix+'_housekeeping.conf'))
 		config.set('General','orient', options.orient)
 		if options.cov != 'not_filled':
 			config.add_section('Coverage')
@@ -957,8 +1104,8 @@ def __main__():
 			config.add_section('Coverage')
 			config.set('Coverage','cov', os.path.abspath(options.out_cov))
 			config.set('General','cov', 'yes')
-			config.set('Coverage','median_cov', str(Value[0]))
-			config.set('Coverage','mean_cov', str(Value[1]))
+			config.set('Coverage','median_cov', str(median_cov))
+			config.set('Coverage','mean_cov', str(mean_cov))
 		else:
 			config.set('General','cov', 'no')
 		config.add_section('Discord_link')

@@ -1,25 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-#  Copyright 2014 CIRAD
-#
-#  This program is free software; you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation; either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, see <http://www.gnu.org/licenses/> or
-#  write to the Free Software Foundation, Inc.,
-#  51 Franklin Street, Fifth Floor, Boston,
-#  MA 02110-1301, USA.
-#
-#
-
 import ConfigParser
 import datetime
 import optparse
@@ -240,12 +219,13 @@ def __main__():
 	# Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Paco Derouault : paco.derouault@gmail.com")
 	parser.add_option( '-z', '--zone', dest='zone', default='', help='Coordinate of the zone (ex : chr01:10000:20000).')
-	parser.add_option( '-r', '--minreads', dest='minreads', default='', help='Minimum reads to make a cluster.')
-	parser.add_option( '-s', '--confSc', dest='confSc', default='', help='Path to the configuration file of scaffremodler.')
-	parser.add_option( '-c', '--confCi', dest='confCi', default='', help='Path to the configuration file of conf4circos.')
+	parser.add_option( '-r', '--minreads', dest='minreads', default='5', help='Minimum reads to make a cluster.')
+	parser.add_option( '-s', '--confsc', dest='confSc', default='', help='Path to the configuration file of scaffremodler.')
+	parser.add_option( '-c', '--confci', dest='confCi', default='', help='Path to the configuration file of conf4circos.')
 	parser.add_option( '-l', '--locaPrograms', dest='locaPrograms', default='', help='Path to the file containing the path of the programs.')
 	parser.add_option( '-p', '--nump', dest='nump', default='', help='Number of processor to use.')
 	parser.add_option( '-g', '--maxgap', dest='maxgap', default='5000', help='Maximum maxgap in pb to clusterize two reads.')
+	parser.add_option( '-o', '--out', dest='out', help='Output file name.')
 	(options, args) = parser.parse_args()
 
 	if not options.zone:
@@ -263,11 +243,16 @@ def __main__():
 	if nbProcs > mp.cpu_count():
 		sys.exit("Processors number too high.\nYou have only "+str(mp.cpu_count())+" processor(s) available.")
 
+	pathname = os.path.dirname(sys.argv[0])
+	loca_programs = ConfigParser.RawConfigParser()
+	loca_programs.read(pathname+'/loca_programs.conf')
+
 
 	configCi = ConfigParser.RawConfigParser()
 	configCi.read(options.confCi)
+	pathname = os.path.dirname(sys.argv[0])
 	locaPrograms = ConfigParser.RawConfigParser()
-	locaPrograms.read(options.locaPrograms)
+	locaPrograms.read(pathname+'/loca_programs.conf')
 	coordZone = parseCoordinates(options.zone)
 	pathname = os.path.dirname(sys.argv[0])
 
@@ -317,9 +302,14 @@ def __main__():
 			print ("Error in the job : "+', '.join(map(str, job[2])))
 
 	if not error:
+		if options.out:
+			outputName = options.out
+		else:
+			outputName = coordZone[0]+"_"+str(coordZone[1])+"_"+str(coordZone[2])+".png"
+
 		optionZones = constructZonesDesc(zonesToDraw, insertSize, chromFile, coordZone)
 		print optionZones
-		drawCircos = "%s %s --config %s --out %s --draw %s --scaff n --text n --read_fr y --read_ff y --read_rf y --read_rr y --read_ins y --read_delet y --read_chr_ff y --read_chr_fr y --read_chr_rf y --read_chr_rr y" % (locaPrograms.get('Programs','python'), pathname+'/draw_circos.py', options.confCi, coordZone[0]+"_"+str(coordZone[1])+"_"+str(coordZone[2])+".png", optionZones)
+		drawCircos = "%s %s --config %s --out %s --draw %s --cov y --discord y --scaff n --text n --read_fr y --read_ff y --read_rf y --read_rr y --read_ins y --read_delet y --read_chr_ff y --read_chr_fr y --read_chr_rf y --read_chr_rr y" % (locaPrograms.get('Programs','python'), pathname+'/draw_circos.py', options.confCi, outputName, optionZones)
 		utils.run_job(getframeinfo(currentframe()), drawCircos, "Error in drawCircos", True)
 
 
