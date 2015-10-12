@@ -187,9 +187,9 @@ def merge2sam(FILE1, FILE2, OUT, MIN, MAX, OR):
 		line1 = file1.readline()
 		line2 = file2.readline()
 	outfile.close()
-	os.system('echo "Mapped pair: '+mapped_pair+'"')
-	os.system('echo "Mapped single (mate1 or mate2): '+mapped_pair+'"')
-	os.system('echo "Unmapped (mate1 and mate2): '+mapped_pair+'"')
+	os.system('echo "Mapped pair: '+str(mapped_pair)+'"')
+	os.system('echo "Mapped single (mate1 or mate2): '+str(mapped_single)+'"')
+	os.system('echo "Unmapped (mate1 and mate2): '+str(unmapped)+'"')
 	
 
 
