@@ -775,7 +775,7 @@ def create_conf(DIC, CONF, IDEOGRAM, TICKS, CONFIG, OUT, CHR, ORDER, UNIT, COV, 
 				outfile.write('file             = %s\n' % text)
 				outfile.write('r0               = 1r\n')
 				outfile.write('r1               = 2r\n')
-				outfile.write('label_size       = 20p\n')
+				outfile.write('label_size       = 25p\n')
 				outfile.write('padding          = 10p\n')
 				outfile.write('rpadding         = 0p\n')
 				outfile.write('show_links     = yes\n')
