@@ -81,24 +81,6 @@ def main(job):
 		return returnCode
 
 
-# def worker(listJobs, out_q):
-	# """
-
-	# """
-	# outdict = {}
-	# # print "###"
-	# # print listJobs
-	# # print "###"
-	# for job in listJobs:
-		# try:
-			# # print "job : "+job
-			# outdict[job] = main(job)
-		# except Exception as e:
-			# outdict[job] = 0
-			# sys.stderr.write(format(e))
-			# pass
-	# out_q.put(outdict)
-
 def __main__():
 	#Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Guillaume MARTIN : guillaume.martin@cirad.fr\n\n"
@@ -130,11 +112,9 @@ def __main__():
 	parser.add_option( '', '--min_score', dest='min_score', default=70, help='The minimal score for a discordant zone to be identified as passed, [default: %default]')
 	parser.add_option( '', '--ploid', dest='ploid', default=0.33, help='Multiplicator for coverage variation detection in SV identification (ex : If homozygous duplication expected in diploid: expected = coverage + coverage*1, if heterozygous duplication expected in diploid => expected = coverage + coverage*0.5). Choose a value lower than the expected one')
 	parser.add_option( '', '--restimate', dest='restimate', default='n', help='Wether re-estimating --mini and --maxi parameters: y or n, [default: %default]. If y, these parameters are calculated as followed on well mapped paired read on the basis of previous min and max parameters: min/max = median -/+ (standard_deviation * "--msd" option)')
-	# parser.add_option( '', '--output', dest='output', default='config.conf', help='The output of the conf file, [default: %default]')
-	# parser.add_option( '', '--chr', dest='chr', default='chr.tab', help='Output file containing chromosomes informations, [default: %default]')
 	parser.add_option( '', '--rm_intermediate', dest='rm_intermediate', default='y', help='Remove intermediate bam/sam, [default: %default]')
 	parser.add_option( '', '--prefix', dest='prefix', default='apmap', help='Prefix for all output files, [default: %default]')
-	parser.add_option( '', '--step', dest='step', default='12345678', help='Steps to perform, [default: %default]')
+	parser.add_option( '', '--step', dest='step', default='1234567', help='Steps to perform, [default: %default]')
 	parser.add_option( '', '--exclude_chrom', dest='exclude_chrom', default='no_exclude', help='Exclude chromosomes from analysis. "no_exclude" or chromosomes names separated by "=", [default: %default]')
 	(options, args) = parser.parse_args()
 
@@ -299,20 +279,5 @@ def __main__():
 			mot = 'Unrecognized argument in --orient option: '+options.orient
 			sys.exit(mot)
 		print("Step 7 is finished (time : "+str(datetime.datetime.now()-t0)+")")
-		sys.stdout.flush()
-	if '8' in options.step:
-		t0 = datetime.datetime.now()
-		print("Step 8 'ident_SV' in progress")
-		sys.stdout.flush()
-		if options.orient == 'rf':
-			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_fr.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
-			run_job( scoring, 'bug')
-		elif options.orient == 'fr':
-			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_rf.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --orient fr --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
-			run_job( scoring, 'bug')
-		else:
-			mot = 'Unrecognized argument in --orient option: '+options.orient
-			sys.exit(mot)
-		print("Step 8 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 if __name__ == "__main__": __main__()
