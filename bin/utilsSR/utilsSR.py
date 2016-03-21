@@ -83,13 +83,15 @@ def extractSamFromPosition(LOCA_PROGRAMS, SAM, TYPE, CHR, START, END, OUT):
 		bam2subbam = '%s view -bh %s %s:%s-%s -o %s' % (LOCA_PROGRAMS.get('Programs','samtools'), SAM, CHR, START, END, OUT)
 		run_job(getframeinfo(currentframe()), bam2subbam, 'Error in bam2subbam:\n', True)
 	elif TYPE == 'sam':
-		outbed = open('outbed_tmp', 'w')
+		TMP = tempfile.NamedTemporaryFile().name.split('/')[-1]
+		outbedTempName = TMP+'_outbed_tmp'
+		outbed = open(outbedTempName, 'w')
 		outbed.write(CHR+'\t'+START+'\t'+END)
 		outbed.close()
 
-		bam2subbam = '%s view -Sh -L %s -o %s %s' % (LOCA_PROGRAMS.get('Programs','samtools'), 'outbed_tmp', SAM, OUT)
+		bam2subbam = '%s view -Sh -L %s -o %s %s' % (LOCA_PROGRAMS.get('Programs','samtools'), outbedTempName, SAM, OUT)
 		run_job(getframeinfo(currentframe()), bam2subbam, 'Error in bam2subbam:\n', True)
-		os.remove('outbed_tmp')
+		os.remove(outbedTempName)
 	else:
 		raise ValueError('File type is invalid.')
 
@@ -156,9 +158,9 @@ def extractSamFromReads(locaPrograms, bam, type, READS, OUT):
 	"""
 
 	if type == 'sam':
-		tmp = tempfile.NamedTemporaryFile().name
-		sam2bam(locaPrograms, bam, tmp.name)
-		FileToExtract = tmp.name
+		tmp = tempfile.NamedTemporaryFile().name.split('/')[-1]
+		sam2bam(locaPrograms, bam, tmp)
+		FileToExtract = tmp
 	elif type == 'bam':
 		FileToExtract = bam
 	else:

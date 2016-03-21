@@ -81,6 +81,24 @@ def main(job):
 		return returnCode
 
 
+# def worker(listJobs, out_q):
+	# """
+
+	# """
+	# outdict = {}
+	# # print "###"
+	# # print listJobs
+	# # print "###"
+	# for job in listJobs:
+		# try:
+			# # print "job : "+job
+			# outdict[job] = main(job)
+		# except Exception as e:
+			# outdict[job] = 0
+			# sys.stderr.write(format(e))
+			# pass
+	# out_q.put(outdict)
+
 def __main__():
 	#Parse Command Line
 	parser = optparse.OptionParser(usage="python %prog [options]\n\nProgram designed by Guillaume MARTIN : guillaume.martin@cirad.fr\n\n"
@@ -112,6 +130,8 @@ def __main__():
 	parser.add_option( '', '--min_score', dest='min_score', default=70, help='The minimal score for a discordant zone to be identified as passed, [default: %default]')
 	parser.add_option( '', '--ploid', dest='ploid', default=0.33, help='Multiplicator for coverage variation detection in SV identification (ex : If homozygous duplication expected in diploid: expected = coverage + coverage*1, if heterozygous duplication expected in diploid => expected = coverage + coverage*0.5). Choose a value lower than the expected one')
 	parser.add_option( '', '--restimate', dest='restimate', default='n', help='Wether re-estimating --mini and --maxi parameters: y or n, [default: %default]. If y, these parameters are calculated as followed on well mapped paired read on the basis of previous min and max parameters: min/max = median -/+ (standard_deviation * "--msd" option)')
+	# parser.add_option( '', '--output', dest='output', default='config.conf', help='The output of the conf file, [default: %default]')
+	# parser.add_option( '', '--chr', dest='chr', default='chr.tab', help='Output file containing chromosomes informations, [default: %default]')
 	parser.add_option( '', '--rm_intermediate', dest='rm_intermediate', default='y', help='Remove intermediate bam/sam, [default: %default]')
 	parser.add_option( '', '--prefix', dest='prefix', default='apmap', help='Prefix for all output files, [default: %default]')
 	parser.add_option( '', '--step', dest='step', default='1234567', help='Steps to perform, [default: %default]')

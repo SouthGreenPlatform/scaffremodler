@@ -705,8 +705,8 @@ def __main__():
 	parser.add_option( '', '--agp', dest='agp', default='not_filled', help='An agp file locating scaffold along chromosomes')
 
 	parser.add_option( '', '--nbaccess', dest='nbaccess', default='null', help='Draw only zone presents from n accessions, [default: %default]')
-	parser.add_option( '', '--filterzone', dest='filterzone', default='P', help='The filter to define a similar zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
-	parser.add_option( '', '--filterdraw', dest='filterdraw', default='P', help='The filter to draw zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
+	parser.add_option( '', '--filterzone', dest='filterzone', default='P', help='The filter to define a similar zone found in other accessions. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
+	parser.add_option( '', '--filterdraw', dest='filterdraw', default='P', help='The filter applied on accession zone status to draw zone. Possible values : P : passed, NP : not_passed, N : New zone identified by reads only, [default: %default]')
 	parser.add_option( '', '--removedZones', dest='removedZones', default='', help='File containing zones to remove.')
 
 	# For output
