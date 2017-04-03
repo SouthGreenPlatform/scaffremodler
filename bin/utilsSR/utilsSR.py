@@ -80,6 +80,8 @@ def extractSamFromPosition(LOCA_PROGRAMS, SAM, TYPE, CHR, START, END, OUT):
 	"""
 
 	if TYPE == 'bam':
+		if not(os.path.isfile(SAM+'.bai')):
+			indexBamFile(LOCA_PROGRAMS, SAM)
 		bam2subbam = '%s view -bh %s %s:%s-%s -o %s' % (LOCA_PROGRAMS.get('Programs','samtools'), SAM, CHR, START, END, OUT)
 		run_job(getframeinfo(currentframe()), bam2subbam, 'Error in bam2subbam:\n', True)
 	elif TYPE == 'sam':

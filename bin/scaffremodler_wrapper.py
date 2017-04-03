@@ -134,7 +134,7 @@ def __main__():
 	# parser.add_option( '', '--chr', dest='chr', default='chr.tab', help='Output file containing chromosomes informations, [default: %default]')
 	parser.add_option( '', '--rm_intermediate', dest='rm_intermediate', default='y', help='Remove intermediate bam/sam, [default: %default]')
 	parser.add_option( '', '--prefix', dest='prefix', default='apmap', help='Prefix for all output files, [default: %default]')
-	parser.add_option( '', '--step', dest='step', default='1234567', help='Steps to perform, [default: %default]')
+	parser.add_option( '', '--step', dest='step', default='12345678', help='Steps to perform, [default: %default]')
 	parser.add_option( '', '--exclude_chrom', dest='exclude_chrom', default='no_exclude', help='Exclude chromosomes from analysis. "no_exclude" or chromosomes names separated by "=", [default: %default]')
 	(options, args) = parser.parse_args()
 
@@ -299,5 +299,20 @@ def __main__():
 			mot = 'Unrecognized argument in --orient option: '+options.orient
 			sys.exit(mot)
 		print("Step 7 is finished (time : "+str(datetime.datetime.now()-t0)+")")
+		sys.stdout.flush()
+	if '8' in options.step:
+		t0 = datetime.datetime.now()
+		print("Step 8 'ident_SV' in progress")
+		sys.stdout.flush()
+		if options.orient == 'rf':
+			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_fr.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
+			run_job( scoring, 'bug')
+		elif options.orient == 'fr':
+			scoring = '%s %s/8_ident_SV.py --config %s.conf --frf %s_rf.score --ff %s_ff.score --rr %s_rr.score --ins %s_ins.score --delet %s_del.score --chr_rr %s_chr_rr.score --chr_fr %s_chr_fr.score --chr_rf %s_chr_rf.score --chr_ff %s_chr_ff.score --out %s_SV_detected.tab --orient fr --thread %s' % (loca_programs.get('Programs','python'), pathname, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.prefix, options.thread)
+			run_job( scoring, 'bug')
+		else:
+			mot = 'Unrecognized argument in --orient option: '+options.orient
+			sys.exit(mot)
+		print("Step 8 is finished (time : "+str(datetime.datetime.now()-t0)+")")
 		sys.stdout.flush()
 if __name__ == "__main__": __main__()
