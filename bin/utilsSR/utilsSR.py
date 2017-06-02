@@ -113,6 +113,21 @@ def indexBamFile(LOCA_PROGRAMS, BAM):
 	run_job(getframeinfo(currentframe()), indexBamFile, 'Error in index_bam_file:\n', True)
 
 
+def sortBam(LOCA_PROGRAMS, BAM, OUT):
+	"""
+		Sort a bam file.
+
+
+		:param LOCA_PROGRAMS: From the Configparser module. Contains the path of each programs
+		:param BAM: The input bam file.
+		:param OUT: The output file name prefix (.bam will be added)
+		:type OUT: str
+		:return: void
+	"""
+	sortbam = '%s sort -o %s -O bam -T tmp-%s %s' % (LOCA_PROGRAMS.get('Programs','samtools'), OUT, OUT, BAM)
+	run_job(getframeinfo(currentframe()), sortbam, 'Error in index_bam_file:\n', True)
+
+
 def sam2bam(LOCA_PROGRAMS, SAM, OUT):
 	"""
 		Convert a sam file to bam format

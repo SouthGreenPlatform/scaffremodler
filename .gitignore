@@ -1,9 +1,2 @@
-data/scaffolds/Ref_for_SV_detection.fasta
-data/reads/reads_mate1_SV.fq
-data/reads/reads_mate2_SV.fq
 bin/createUI.py
-drawDestZones.py
-bin/drawDestZones.py
-bin/filter_common_zones.py
-bin/8_ident_SV.py
 bin/filter_common_zones_dev.py
