@@ -81,6 +81,7 @@ def Filter(LOCA_PROGRAMS, SAM, TYPE, SORT, OUT):
 	os.system("sed -n 8p %s | cut -f 7 | sed 's/^/Read pairs optical duplicates : /'" % rmdupmetrics)
 	os.system("sed -n 8p %s | cut -f 8 | sed 's/^/Duplication proportion : /'" % rmdupmetrics)
 	os.remove(rmdupmetrics)
+	shutil.rmtree(temporary)
 
 def __main__():
 	#Parse Command Line
