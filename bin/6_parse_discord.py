@@ -53,10 +53,13 @@ def run_job (cmd_line, ERROR):
 		stop_err( ERROR + str( e ) )
 
 def trie2discord_pair(LOCA_PROGRAMS, SAM, TYPE, SORT, MINI_DIS, MINI, MAXI, ORIENT, CHR, LISTE):
+
+	temporary = SAM+'_tempo_tmp'
+	
 	if TYPE == 'bam':
 		tmp = (tempfile.NamedTemporaryFile().name)+'.sam'
 		if SORT == 'coordinate' or SORT == 'unsorted':
-			bam2sam = '%s -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=queryname QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, tmp)
+			bam2sam = '%s -XX:ParallelGCThreads=1 -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=queryname QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, tmp, temporary)
 		elif SORT == 'queryname':
 			bam2sam = 'samtools view -h -o %s %s' % (tmp, SAM)
 		else:
@@ -69,7 +72,7 @@ def trie2discord_pair(LOCA_PROGRAMS, SAM, TYPE, SORT, MINI_DIS, MINI, MAXI, ORIE
 	else:
 		if SORT == 'coordinate' or SORT == 'unsorted':
 			tmp = (tempfile.NamedTemporaryFile().name)+'.sam'
-			Sorting = '%s -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=queryname QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, tmp)
+			Sorting = '%s -XX:ParallelGCThreads=1 -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=queryname QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, tmp, temporary)
 			run_job (Sorting, 'Error in samtools :')
 			trielinebyline(SAM, MINI_DIS, MINI, MAXI, ORIENT, CHR, LISTE)
 			# print tmp
@@ -79,6 +82,7 @@ def trie2discord_pair(LOCA_PROGRAMS, SAM, TYPE, SORT, MINI_DIS, MINI, MAXI, ORIE
 		else:
 			mot = 'Unrecognized --sort option : '+SORT
 			sys.exit(mot)
+	shutil.rmtree(temporary)
 
 def trielinebyline(SAM, MINI_DIS, MINI, MAXI, ORIENT, CHR, LISTE):
 	############################################
@@ -477,7 +481,9 @@ def calcul_discord_prop_and_parse(LOCA_PROGRAMS, CHR, SAM, LISTE_TYPE, OUT_INS, 
 			if absent:
 				outfile.write(line)
 	outfile.close()
-
+	
+	temporary = SAM+'_calcul_discord_prop_and_parse_tmp'
+	
 	############################################
 	#Calculating discordant proportions
 	############################################
@@ -485,8 +491,8 @@ def calcul_discord_prop_and_parse(LOCA_PROGRAMS, CHR, SAM, LISTE_TYPE, OUT_INS, 
 	grep(LISTE_FILTERED, liste_discord, 'ok', 'rm', [5])
 	read_discord = (tempfile.NamedTemporaryFile().name)+'.sam'
 	read_non_discord = (tempfile.NamedTemporaryFile().name)+'.sam'
-	filter1 = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, read_discord, liste_discord)
-	filter2 = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=excludeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, read_non_discord, liste_discord)
+	filter1 = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, read_discord, liste_discord, temporary)
+	filter2 = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=excludeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, read_non_discord, liste_discord, temporary)
 	run_job (filter1, 'Error in FilterSamReads.jar:')
 	run_job (filter2, 'Error in FilterSamReads.jar:')
 
@@ -514,12 +520,12 @@ def calcul_discord_prop_and_parse(LOCA_PROGRAMS, CHR, SAM, LISTE_TYPE, OUT_INS, 
 		sam2bam = '%s view -bS %s > %s' % (LOCA_PROGRAMS.get('Programs','samtools'), read_non_discord ,OUT_RF)
 		liste_discord_orient = (tempfile.NamedTemporaryFile().name)+'orient.list'
 		nb_dis = grep(LISTE_FILTERED, liste_discord_orient, 'fr', 'keep', [5])
-		filter1 = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_FR, liste_discord_orient)
+		filter1 = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_FR, liste_discord_orient, temporary)
 	elif OR == 'fr':
 		sam2bam = '%s view -bS %s > %s' % (LOCA_PROGRAMS.get('Programs','samtools'), read_non_discord ,OUT_FR)
 		liste_discord_orient = (tempfile.NamedTemporaryFile().name)+'orient.list'
 		nb_dis = grep(LISTE_FILTERED, liste_discord_orient, 'rf', 'keep', [5])
-		filter1 = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_RF, liste_discord_orient)
+		filter1 = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_RF, liste_discord_orient, temporary)
 	else:
 		mot = 'Unrecognized --orient option : '+OR
 		sys.exit(mot)
@@ -540,39 +546,39 @@ def calcul_discord_prop_and_parse(LOCA_PROGRAMS, CHR, SAM, LISTE_TYPE, OUT_INS, 
 
 	liste_discord_ins = (tempfile.NamedTemporaryFile().name)+'ins.list'
 	nb_ins = grep(LISTE_FILTERED, liste_discord_ins, 'ins', 'keep', [5])
-	filter_ins = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_INS, liste_discord_ins)
+	filter_ins = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_INS, liste_discord_ins, temporary)
 
 	liste_discord_del = (tempfile.NamedTemporaryFile().name)+'del.list'
 	nb_del = grep(LISTE_FILTERED, liste_discord_del, 'del', 'keep', [5])
-	filter_del = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_DEL, liste_discord_del)
+	filter_del = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_DEL, liste_discord_del, temporary)
 
 	liste_discord_ff = (tempfile.NamedTemporaryFile().name)+'ff.list'
 	nb_ff = grep(LISTE_FILTERED, liste_discord_ff, 'ff', 'keep', [5])
-	filter_ff = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_FF, liste_discord_ff)
+	filter_ff = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_FF, liste_discord_ff, temporary)
 
 	liste_discord_rr = (tempfile.NamedTemporaryFile().name)+'rr.list'
 	nb_rr = grep(LISTE_FILTERED, liste_discord_rr, 'rr', 'keep', [5])
-	filter_rr = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_RR, liste_discord_rr)
+	filter_rr = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_RR, liste_discord_rr, temporary)
 
 	liste_discord_chr_ff = (tempfile.NamedTemporaryFile().name)+'chr_ff.list'
 	nb_chr_ff = grep(LISTE_FILTERED, liste_discord_chr_ff, 'chr_ff', 'keep', [5])
-	filter_chr_ff = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_FF, liste_discord_chr_ff)
+	filter_chr_ff = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_FF, liste_discord_chr_ff, temporary)
 
 	liste_discord_chr_rr = (tempfile.NamedTemporaryFile().name)+'chr_rr.list'
 	nb_chr_rr = grep(LISTE_FILTERED, liste_discord_chr_rr, 'chr_rr', 'keep', [5])
-	filter_chr_rr = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_RR, liste_discord_chr_rr)
+	filter_chr_rr = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_RR, liste_discord_chr_rr, temporary)
 
 	liste_discord_chr_fr = (tempfile.NamedTemporaryFile().name)+'chr_fr.list'
 	nb_chr_fr = grep(LISTE_FILTERED, liste_discord_chr_fr, 'chr_fr', 'keep', [5])
-	filter_chr_fr = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_FR, liste_discord_chr_fr)
+	filter_chr_fr = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_FR, liste_discord_chr_fr, temporary)
 
 	liste_discord_chr_rf = (tempfile.NamedTemporaryFile().name)+'chr_rf.list'
 	nb_chr_rf = grep(LISTE_FILTERED, liste_discord_chr_rf, 'chr_rf', 'keep', [5])
-	filter_chr_rf = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_RF, liste_discord_chr_rf)
+	filter_chr_rf = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_CHR_RF, liste_discord_chr_rf, temporary)
 
 	liste_discord_discarded = (tempfile.NamedTemporaryFile().name)+'discarded.list'
 	nb_discarded = grep(LISTE_FILTERED, liste_discord_discarded, 'discard', 'keep', [5])
-	filter_discarded = '%s -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_DISCARDED, liste_discord_discarded)
+	filter_discarded = '%s -XX:ParallelGCThreads=1 -jar %s FilterSamReads INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true FILTER=includeReadList READ_LIST_FILE=%s WRITE_READS_FILES=false MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), SAM, OUT_DISCARDED, liste_discord_discarded, temporary)
 
 	if nb_ins > 0:
 		run_job (filter_ins, 'Error in FilterSamReads.jar:')
@@ -660,6 +666,7 @@ def calcul_discord_prop_and_parse(LOCA_PROGRAMS, CHR, SAM, LISTE_TYPE, OUT_INS, 
 	os.remove(liste_discord_chr_fr)
 	os.remove(liste_discord_chr_rf)
 	os.remove(liste_discord_discarded)
+	shutil.rmtree(temporary)
 	return LISTE_EMPTY
 
 
