@@ -65,9 +65,9 @@ def Filter(LOCA_PROGRAMS, SAM, TYPE, SORT, OUT):
 	else:
 		mot = SAM+' argument passed in --sam is not recognized'
 		sys.exit(mot)
-	sorting1 = '%s -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), bamfile, sortedbam, temporary)
-	rmdup = '%s -jar %s MarkDuplicates INPUT=%s OUTPUT=%s METRICS_FILE=%s REMOVE_DUPLICATES=true QUIET=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), sortedbam, rmdupbam, rmdupmetrics, temporary)
-	sorting2 = '%s -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=%s QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), rmdupbam, OUT, SORT, temporary)
+	sorting1 = '%s -XX:ParallelGCThreads=1 -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=coordinate QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), bamfile, sortedbam, temporary)
+	rmdup = '%s -XX:ParallelGCThreads=1 -jar %s MarkDuplicates INPUT=%s OUTPUT=%s METRICS_FILE=%s REMOVE_DUPLICATES=true QUIET=true MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), sortedbam, rmdupbam, rmdupmetrics, temporary)
+	sorting2 = '%s -XX:ParallelGCThreads=1 -jar %s SortSam INPUT=%s OUTPUT=%s SORT_ORDER=%s QUIET=true MAX_RECORDS_IN_RAM=5000000 VERBOSITY=WARNING VALIDATION_STRINGENCY=SILENT TMP_DIR=%s' % (LOCA_PROGRAMS.get('Programs','java'), LOCA_PROGRAMS.get('Programs','picard-tool'), rmdupbam, OUT, SORT, temporary)
 	
 	run_job(filter, 'Error in first filter:')
 	run_job(sorting1, 'Error in sorting1:')
