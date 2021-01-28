@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding:Utf-8 -*-
+
 
 #
 #  Copyright 2014 CIRAD
