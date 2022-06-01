@@ -57,7 +57,7 @@ def run_job (cmd_line, ERROR):
 
 def recal_ins(LOCA_PROGRAMS, FILE, TYPE):
 	# os.system('echo "Calculating insert size on the firts approximation of the well mapped read"')
-	tmp = tempfile.NamedTemporaryFile().name
+	tmp = os.path.basename(tempfile.NamedTemporaryFile().name)
 	# print tmp
 	if TYPE == 'bam':
 		estim_insert = '%s view -uf 2 %s | %s view -h -o %s - ' % (LOCA_PROGRAMS.get('Programs','samtools'), FILE, LOCA_PROGRAMS.get('Programs','samtools'), tmp)
