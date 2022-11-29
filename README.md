@@ -38,11 +38,11 @@ Guillaume Martin, Françoise Carreel, Olivier Coriton, Catherine Hervouet, Céli
 
 <br>
 
-Author of scripts
+Referring person of the deposit
 -----------
 
 Guillaume Martin (CIRAD)
-Paco Derouault
+
 
 <br>
 
