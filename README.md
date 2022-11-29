@@ -5,7 +5,7 @@ Scaffremodler regroup a severals programs which principal aims is to detect use 
 link different genomic regions. These main programs are accompanied with a severals others 
 programs that can be used in complement to improve scaffold assemblies or to detect large 
 structural variations between a reference sequence and a re-sequenced genome.
-<br><br><br>
+<br>
 
 Installation
 ------------
@@ -26,7 +26,7 @@ found at http://broadinstitute.github.io/picard/
 perl, python and java are required. Biopython is also required.
 7- bamgrepreads can be found at https://code.google.com/p/variationtoolkit/wiki/BamGrepReads
 
-<br><br><br>
+<br>
 
 How to cite
 -----------
@@ -36,7 +36,7 @@ Martin G, Baurens F-C, Droc G, Rouard M, Cenci A, Kilian A, Hastie A, Doležel J
 
 Guillaume Martin, Françoise Carreel, Olivier Coriton, Catherine Hervouet, Céline Cardi, Paco Derouault, Danièle Roques, Frédéric Salmon, Mathieu Rouard, Julie Sardos, Karine Labadie, Franc-Christophe Baurens, Angélique D’Hont. 2017. **Evolution of the banana genome (Musa acuminata) is impacted by large chromosomal translocations.** *Molecular Biology and Evolution* https://academic.oup.com/mbe/article/34/9/2140/3852084
 
-<br><br><br>
+<br>
 
 Author of scripts
 -----------
@@ -44,10 +44,10 @@ Author of scripts
 Guillaume Martin (CIRAD)
 Paco Derouault
 
-<br><br>
+<br>
 
 License
 -----------
 Licencied under GPLv3
 
-<br><br>
+<br>
